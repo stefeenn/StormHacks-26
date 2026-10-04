@@ -172,16 +172,13 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
 
         if is_interactive:
             handler = ConsoleInputHandler(search_service=pipeline.player_search)
-            if hasattr(handler, "collect_pitcher_search_inputs"):
-                inputs = handler.collect_pitcher_search_inputs()
-            else:
-                inputs = handler.collect_all_inputs()
+            inputs = handler.collect_pitcher_search_inputs()
 
             pitcher = inputs["pitcher_name"]
             pitcher_hand = inputs["pitcher_hand"]
-            batter = inputs.get("batter_name")
-            batter_stance = inputs.get("batter_stance", "both")
-            season = inputs.get("season", DEFAULT_SEASON)
+            batter = inputs["batter_name"]
+            batter_stance = inputs["batter_stance"]
+            season = inputs["season"]
         else:
             pitcher = args.pitcher
             if not pitcher:
@@ -236,16 +233,13 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
 
         if is_interactive:
             handler = ConsoleInputHandler(search_service=pipeline.player_search)
-            if hasattr(handler, "collect_batter_search_inputs"):
-                inputs = handler.collect_batter_search_inputs()
-            else:
-                inputs = handler.collect_all_inputs()
+            inputs = handler.collect_batter_search_inputs()
 
             batter = inputs["batter_name"]
             batter_stance = inputs["batter_stance"]
-            pitcher = inputs.get("pitcher_name")
-            pitcher_hand = inputs.get("pitcher_hand", "both")
-            season = inputs.get("season", DEFAULT_SEASON)
+            pitcher = inputs["pitcher_name"]
+            pitcher_hand = inputs["pitcher_hand"]
+            season = inputs["season"]
         else:
             batter = args.batter
             if not batter:
@@ -335,37 +329,13 @@ def main():
         run_pitch_scraper(args, pipeline)
     else:
         # Top-level interactive flow: prompt user to choose between Pitcher and Batter Search
-        search_mode = args.search_mode
-        if search_mode is None:
-            handler = ConsoleInputHandler(search_service=pipeline.player_search)
-            if hasattr(handler, "prompt_search_mode"):
-                print("\n" + "=" * 60)
-                print("⚾ Baseball Savant Statcast Search")
-                print("=" * 60)
-                search_mode = handler.prompt_search_mode()
-            else:
-                print("\n" + "=" * 60)
-                print("⚾ Baseball Savant Statcast Search")
-                print("=" * 60)
-                print("Select Search Mode:")
-                print("  [1] Pitcher Search")
-                print("  [2] Batter Search")
-                while True:
-                    raw_choice = input("Enter choice (1 for Pitcher, 2 for Batter): ").strip().lower()
-                    if raw_choice in ["1", "pitcher", "p"]:
-                        search_mode = "pitcher"
-                        break
-                    elif raw_choice in ["2", "batter", "b"]:
-                        search_mode = "batter"
-                        break
-                    print("❌ Error: Invalid choice. Please enter '1' for Pitcher Search or '2' for Batter Search.")
-
-        if search_mode == "batter":
-            run_batter_scraper(args, pipeline)
+        handler = ConsoleInputHandler(search_service=pipeline.player_search)
+        inputs = handler.collect_all_inputs(search_mode=args.search_mode)
+        if inputs["search_mode"] == "batter":
+            run_batter_scraper(args, pipeline, inputs=inputs)
         else:
-            run_pitch_scraper(args, pipeline)
+            run_pitch_scraper(args, pipeline, inputs=inputs)
 
 
 if __name__ == "__main__":
     main()
-
