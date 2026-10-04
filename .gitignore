@@ -1,0 +1,22 @@
+# Virtual environment and local binaries
+.venv/
+bin/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Caches
+.cache/
+.temp/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp

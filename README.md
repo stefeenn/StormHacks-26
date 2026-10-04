@@ -1,1 +1,114 @@
-# StormHacks-26
+# Baseball Savant Modular Data Scraper
+
+A modular, extensible Python scraper for extracting Statcast and standard baseball statistics from [Baseball Savant](https://baseballsavant.mlb.com/) into clean, formatted CSV datasets.
+
+---
+
+## 🚀 Overview
+
+The scraper connects directly to Baseball Savant team statcast pages, extracts tabular hitting (and pitching) data, normalizes values and player names, applies configurable metric selectors and sorting rules, and exports clean CSV files.
+
+### Key Features
+- **Modular Architecture**: Separate layers for network fetching, HTML parsing, metric extraction/formatting, and file exporting.
+- **Configurable Data Elements**: Extract single metrics (e.g. Batting Average) or multi-metric packages (`BA,HR,OBP,SLG,ExitVelocity`) via command-line arguments or Python code.
+- **Automatic Name Normalization**: Formats raw `"Last, First"` entries into clean `"First Last"` format.
+- **Roster vs. Aggregate Filtering**: Automatically isolates individual roster players from team (`Dodgers`) and league (`MLB`) aggregate totals.
+- **Smart Sorting**: Supports descending or ascending sorting by any metric or by player name.
+- **Resilient Networking**: Custom headers with retry mechanisms and status backoff (`429`, `500`, `502`, `503`, `504`).
+
+---
+
+## 📁 Project Structure
+
+```
+ProjV1/
+├── scraper/
+│   ├── __init__.py           # Package exports
+│   ├── config.py             # Team mappings (LAD -> 119), URLs, aliases, default settings
+│   ├── client.py             # Requests session with retries and custom headers
+│   ├── models.py             # Dataclasses: PlayerRecord, ScrapedDataset
+│   ├── parsers/
+│   │   ├── base.py           # BaseParser abstract interface
+│   │   └── team_page.py      # TeamPageParser for hitting/pitching tables
+│   ├── extractors/
+│   │   └── registry.py       # Metric registry, aliases, formatters, FieldSelector
+│   ├── exporters/
+│   │   ├── base.py           # BaseExporter abstract interface
+│   │   └── csv_exporter.py   # CsvExporter with sorting and custom columns
+│   └── pipeline.py           # ScraperPipeline orchestrator
+├── tests/
+│   ├── test_config.py        # Team ID resolution and configuration tests
+│   ├── test_models.py        # PlayerRecord and name cleaning tests
+│   ├── test_parser.py        # HTML parsing tests with sample tables
+│   ├── test_exporter.py      # CSV export and sorting tests
+│   └── test_pipeline.py      # End-to-end mocked pipeline tests
+├── output/
+│   └── dodgers_2026_batting_averages.csv  # Generated CSV output
+├── main.py                   # CLI runner
+├── requirements.txt          # Python dependencies
+└── pyproject.toml            # Package configuration and pytest settings
+```
+
+---
+
+## 🛠️ Installation
+
+```bash
+# Using standard virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Or using uv
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+---
+
+## 🏃 Usage
+
+### 1. Default Run (2026 LA Dodgers Batting Averages)
+Scrapes the 2026 LA Dodgers roster and outputs a CSV sorted by batting average descending:
+```bash
+python main.py
+```
+Output saved to `output/dodgers_2026_batting_averages.csv`.
+
+### 2. Custom Output Path
+```bash
+python main.py --output output/my_dodgers_stats.csv
+```
+
+### 3. Adding or Changing Metrics
+Because the architecture is modular, you can extract any combination of metrics available on Baseball Savant:
+```bash
+# Batting average, Home Runs, OBP, and Slugging
+python main.py --metrics "BA,HR,OBP,SLG" --sort-by BA --output output/dodgers_advanced.csv
+
+# Statcast metrics: Exit Velocity & Expected Batting Average (xBA)
+python main.py --metrics "BA,xBA,ExitVelocity,Hard Hit %" --sort-by ExitVelocity
+
+# Sort by Home Runs descending
+python main.py --metrics "HR,BA,SLG" --sort-by HR
+```
+
+### 4. Other Teams or Seasons
+```bash
+# New York Yankees, 2026 season
+python main.py --team NYY --season 2026 --metrics "BA,HR"
+
+# Team ID directly
+python main.py --team 147 --season 2026
+```
+
+---
+
+## 🧪 Running Tests
+
+To run the automated test suite:
+```bash
+pytest
+```
+All 11 unit tests cover configuration, data models, table parsing, CSV generation, and pipeline orchestration.
