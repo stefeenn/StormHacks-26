@@ -87,7 +87,7 @@ def run_server(
 
     url = f"http://{host}:{port}"
     print("\n" + "=" * 65)
-    print("⚾ Baseball Savant Web Interface")
+    print("⚾ Pitch Perfect Web Interface")
     print(f"Server running locally at: {url}")
     print("Press Ctrl+C to stop the server (outputs will be automatically cleared).")
     print("=" * 65 + "\n")

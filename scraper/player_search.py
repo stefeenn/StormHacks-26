@@ -21,6 +21,10 @@ class PlayerInfo:
     bat_side: str
     active: bool
 
+    @property
+    def headshot_url(self) -> str:
+        return f"https://content.mlb.com/images/headshots/current/60x60/{self.player_id}@3x.png"
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.player_id,
@@ -30,6 +34,7 @@ class PlayerInfo:
             "pitch_hand": self.pitch_hand,
             "bat_side": self.bat_side,
             "active": self.active,
+            "headshot_url": self.headshot_url,
         }
 
 

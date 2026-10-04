@@ -1,13 +1,5 @@
 Pitch Type,Average Velocity - Left (mph),Average Velocity - Right (mph),Occurrence Percentage - Left (%),Occurrence Percentage - Right (%)
-4-Seam Fastball,92.9,95.0,22.7%,34.0%
-Sinker,92.5,93.8,47.5%,11.5%
-Slider,85.9,86.9,14.9%,12.5%
-Cutter,89.3,90.0,2.1%,15.2%
-Sweeper,80.8,82.9,7.8%,8.0%
-Curveball,79.0,79.9,1.4%,8.5%
-Changeup,78.5,87.0,1.4%,5.0%
-Split-Finger,N/A,87.1,0.0%,2.5%
-Knuckle Curve,82.0,79.5,0.7%,1.5%
-Eephus,N/A,35.1,0.0%,0.8%
-Slurve,81.2,78.7,1.4%,0.2%
-Other,N/A,63.7,0.0%,0.2%
+Sinker,97.0,N/A,40.0%,0.0%
+4-Seam Fastball,98.5,N/A,20.0%,0.0%
+Changeup,88.0,N/A,20.0%,0.0%
+Slider,89.5,N/A,20.0%,0.0%

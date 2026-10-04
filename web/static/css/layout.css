@@ -47,6 +47,11 @@ body {
   gap: 12px;
 }
 
+.header-center-title .header-logo-icon {
+  -webkit-text-fill-color: initial;
+  display: inline-flex;
+}
+
 .header-center-title .badge {
   display: inline-block;
   font-size: 0.75rem;

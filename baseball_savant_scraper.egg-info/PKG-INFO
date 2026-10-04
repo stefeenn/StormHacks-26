@@ -9,6 +9,7 @@ Requires-Dist: beautifulsoup4>=4.12.0
 Requires-Dist: pandas>=2.0.0
 Requires-Dist: flask>=3.0.0
 Requires-Dist: matplotlib>=3.7.0
+Requires-Dist: pyserial>=3.5
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0.0; extra == "dev"
 

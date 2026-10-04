@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Baseball Savant Statcast Explorer</title>
+  <title>Pitch Perfect</title>
   
   <!-- Modular CSS Components -->
-  <link rel="stylesheet" href="/static/css/variables.css?v=2">
-  <link rel="stylesheet" href="/static/css/layout.css?v=2">
-  <link rel="stylesheet" href="/static/css/intro.css?v=1">
-  <link rel="stylesheet" href="/static/css/wizard.css?v=2">
-  <link rel="stylesheet" href="/static/css/dropdown.css?v=2">
-  <link rel="stylesheet" href="/static/css/modal.css?v=2">
-  <link rel="stylesheet" href="/static/css/data_model.css?v=3">
+  <link rel="stylesheet" href="/static/css/variables.css?v=12">
+  <link rel="stylesheet" href="/static/css/layout.css?v=12">
+  <link rel="stylesheet" href="/static/css/intro.css?v=12">
+  <link rel="stylesheet" href="/static/css/wizard.css?v=12">
+  <link rel="stylesheet" href="/static/css/dropdown.css?v=12">
+  <link rel="stylesheet" href="/static/css/modal.css?v=12">
+  <link rel="stylesheet" href="/static/css/data_model.css?v=12">
 </head>
 <body class="intro-active">
 
@@ -100,7 +100,7 @@
     <!-- Title: Top Center of Screen -->
     <div class="header-center-title">
       <h1>
-        <span id="btn-replay-intro" class="btn-replay-intro" role="button" tabindex="0" title="Click to replay pitch intro">⚾</span> Baseball Savant Statcast Explorer
+        <span class="header-logo-icon">⚾</span> Pitch Perfect
         <span class="badge">Live</span>
       </h1>
       <p class="header-subtitle">Interactive pitch arsenal & head-to-head matchup query interface</p>
@@ -211,15 +211,15 @@
               id="input-pitcher-hand"
               class="input-box"
               type="text"
-              placeholder="Enter 'L', 'R', or 'both'"
-              value="both"
+              placeholder="Enter 'L', 'R', or 'Both'"
+              value="Both"
               autocomplete="off"
             >
           </div>
           <div class="options-chips">
             <button type="button" class="chip-btn" data-target="input-pitcher-hand" data-value="L">Left-Handed (L)</button>
             <button type="button" class="chip-btn" data-target="input-pitcher-hand" data-value="R">Right-Handed (R)</button>
-            <button type="button" class="chip-btn active" data-target="input-pitcher-hand" data-value="both">Both / Any</button>
+            <button type="button" class="chip-btn active" data-target="input-pitcher-hand" data-value="Both">Both / Any</button>
           </div>
         </div>
 
@@ -254,15 +254,15 @@
               id="input-batter-stance"
               class="input-box"
               type="text"
-              placeholder="Enter 'left', 'right', or 'both'"
-              value="both"
+              placeholder="Enter 'Left', 'Right', or 'Both'"
+              value="Both"
               autocomplete="off"
             >
           </div>
           <div class="options-chips">
-            <button type="button" class="chip-btn" data-target="input-batter-stance" data-value="left">Left-Handed Batter</button>
-            <button type="button" class="chip-btn" data-target="input-batter-stance" data-value="right">Right-Handed Batter</button>
-            <button type="button" class="chip-btn active" data-target="input-batter-stance" data-value="both">Both / All Batters</button>
+            <button type="button" class="chip-btn" data-target="input-batter-stance" data-value="Left">Left-Handed Batter</button>
+            <button type="button" class="chip-btn" data-target="input-batter-stance" data-value="Right">Right-Handed Batter</button>
+            <button type="button" class="chip-btn active" data-target="input-batter-stance" data-value="Both">Both / All Batters</button>
           </div>
         </div>
 
@@ -350,15 +350,15 @@
               id="input-batter-stance-bmode"
               class="input-box"
               type="text"
-              placeholder="Enter 'left', 'right', or 'both'"
-              value="both"
+              placeholder="Enter 'Left', 'Right', or 'Both'"
+              value="Both"
               autocomplete="off"
             >
           </div>
           <div class="options-chips">
-            <button type="button" class="chip-btn" data-target="input-batter-stance-bmode" data-value="left">Left-Handed Stance</button>
-            <button type="button" class="chip-btn" data-target="input-batter-stance-bmode" data-value="right">Right-Handed Stance</button>
-            <button type="button" class="chip-btn active" data-target="input-batter-stance-bmode" data-value="both">Both / Any</button>
+            <button type="button" class="chip-btn" data-target="input-batter-stance-bmode" data-value="Left">Left-Handed Stance</button>
+            <button type="button" class="chip-btn" data-target="input-batter-stance-bmode" data-value="Right">Right-Handed Stance</button>
+            <button type="button" class="chip-btn active" data-target="input-batter-stance-bmode" data-value="Both">Both / Any</button>
           </div>
         </div>
 
@@ -484,7 +484,7 @@
 
   <!-- Footer -->
   <footer class="app-footer">
-    <p>Baseball Savant Scraper • Local Interface • Outputs cleared on closure</p>
+    <p>Pitch Perfect • Statcast Pitch Arsenal Explorer • Outputs cleared on closure</p>
   </footer>
 
   <!-- Pop-out Screen: CSV Data Reader Modal -->
@@ -924,6 +924,6 @@
   </dialog>
 
   <!-- Modular Scripts -->
-  <script type="module" src="/static/js/app.js?v=4"></script>
+  <script type="module" src="/static/js/app.js?v=12"></script>
 </body>
 </html>

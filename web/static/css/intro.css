@@ -131,21 +131,6 @@
   border-radius: 4px;
 }
 
-/* Replay trigger button on the header baseball emoji */
-.btn-replay-intro {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--transition-fast), filter var(--transition-fast);
-  user-select: none;
-}
-
-.btn-replay-intro:hover {
-  transform: scale(1.22) rotate(25deg);
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.7));
-}
-
 /* ==========================================================================
    Smooth Continuous Keyframes (Zero Intermediate Steps = Zero Stutter)
    ========================================================================== */

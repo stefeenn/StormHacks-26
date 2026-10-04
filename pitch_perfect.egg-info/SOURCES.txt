@@ -1,11 +1,11 @@
 README.md
 pyproject.toml
-baseball_savant_scraper.egg-info/PKG-INFO
-baseball_savant_scraper.egg-info/SOURCES.txt
-baseball_savant_scraper.egg-info/dependency_links.txt
-baseball_savant_scraper.egg-info/entry_points.txt
-baseball_savant_scraper.egg-info/requires.txt
-baseball_savant_scraper.egg-info/top_level.txt
+pitch_perfect.egg-info/PKG-INFO
+pitch_perfect.egg-info/SOURCES.txt
+pitch_perfect.egg-info/dependency_links.txt
+pitch_perfect.egg-info/entry_points.txt
+pitch_perfect.egg-info/requires.txt
+pitch_perfect.egg-info/top_level.txt
 scraper/__init__.py
 scraper/client.py
 scraper/config.py

@@ -1,0 +1,3 @@
+[console_scripts]
+pitch-perfect = main:main
+savant-scraper = main:main

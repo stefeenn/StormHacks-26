@@ -353,9 +353,10 @@ export class WizardController {
           this.state.batter_name = batter.full_name;
           this.state.batter_id = batter.id;
           if (batter.bat_side) {
-            this.state.batter_stance = batter.bat_side.toLowerCase() === "l" ? "left" : "right";
+            const side = batter.bat_side.toLowerCase() === "l" ? "Left" : "Right";
+            this.state.batter_stance = side.toLowerCase();
             if (this.inputBatterStance) {
-              this.inputBatterStance.value = this.state.batter_stance;
+              this.inputBatterStance.value = side;
             }
           }
 
@@ -376,9 +377,14 @@ export class WizardController {
 
       case 4: {
         // Step 4: Batter Stance
-        let stance = (this.inputBatterStance.value || "").trim().toLowerCase();
+        let rawStance = (this.inputBatterStance.value || "").trim();
+        let stance = rawStance.toLowerCase();
         if (!["left", "right", "both"].includes(stance)) {
           stance = "both";
+        }
+        const formattedStance = stance.charAt(0).toUpperCase() + stance.slice(1);
+        if (this.inputBatterStance) {
+          this.inputBatterStance.value = formattedStance;
         }
         this.state.batter_stance = stance;
         this.goToStep(5);
@@ -445,10 +451,11 @@ export class WizardController {
           const player = results[0];
           this.state.batter_name = player.full_name;
           this.state.batter_id = player.id;
-          this.state.batter_stance = player.bat_side && player.bat_side.toUpperCase() === "L" ? "left" : "right";
+          const side = player.bat_side && player.bat_side.toUpperCase() === "L" ? "Left" : "Right";
+          this.state.batter_stance = side.toLowerCase();
 
           if (this.inputBatterStanceB) {
-            this.inputBatterStanceB.value = this.state.batter_stance;
+            this.inputBatterStanceB.value = side;
           }
 
           this._showFeedback(
@@ -468,9 +475,14 @@ export class WizardController {
 
       case 2: {
         // Step 2: Batter Stance
-        let stance = (this.inputBatterStanceB.value || "").trim().toLowerCase();
+        let rawStance = (this.inputBatterStanceB.value || "").trim();
+        let stance = rawStance.toLowerCase();
         if (!["left", "right", "both"].includes(stance)) {
           stance = "both";
+        }
+        const formattedStance = stance.charAt(0).toUpperCase() + stance.slice(1);
+        if (this.inputBatterStanceB) {
+          this.inputBatterStanceB.value = formattedStance;
         }
         this.state.batter_stance = stance;
         this.goToStep(3);

@@ -1,3 +1,18 @@
+Metadata-Version: 2.4
+Name: pitch-perfect
+Version: 0.1.0
+Summary: Pitch Perfect: Interactive MLB Statcast Pitch Arsenal Explorer & Sportsbook Velocity Model
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.31.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: flask>=3.0.0
+Requires-Dist: matplotlib>=3.7.0
+Requires-Dist: pyserial>=3.5
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+
 # ⚾ Pitch Perfect
 
 **Pitch Perfect** is an interactive MLB Statcast Pitch Arsenal Explorer and Quantitative Sportsbook Velocity Betting Engine. It empowers analysts, coaches, and sports bettors to dissect pitch-level Statcast metrics, evaluate head-to-head pitcher/batter matchups, and assess velocity proposition bets using a weighted three-source empirical betting model.

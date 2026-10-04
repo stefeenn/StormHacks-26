@@ -24,6 +24,47 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 # In-memory recent search session storage for rich metadata
 recent_searches_session: List[Dict[str, Any]] = []
+RECENT_CACHE_FILE = ".recent_searches_cache.json"
+
+
+def _clean_str(val: Any) -> Optional[str]:
+    """Ensure value is a string, filtering out MagicMock or non-string objects."""
+    return val if isinstance(val, str) else None
+
+
+def _clean_id(val: Any) -> Optional[int]:
+    """Ensure value is an integer or numeric string, filtering out MagicMocks."""
+    if isinstance(val, int) and not isinstance(val, bool):
+        return val
+    if isinstance(val, str) and val.isdigit():
+        return int(val)
+    return None
+
+
+def _save_recent_session():
+    """Persist recent searches session to JSON cache in output directory."""
+    try:
+        cache_path = _get_output_dir() / RECENT_CACHE_FILE
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(recent_searches_session, f, indent=2)
+    except Exception as e:
+        logger.warning(f"Could not save recent searches cache: {e}")
+
+
+def _load_recent_session():
+    """Load recent searches session from JSON cache if session is currently empty."""
+    global recent_searches_session
+    if recent_searches_session:
+        return
+    try:
+        cache_path = _get_output_dir() / RECENT_CACHE_FILE
+        if cache_path.exists():
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    recent_searches_session[:] = data
+    except Exception as e:
+        logger.warning(f"Could not load recent searches cache: {e}")
 
 
 def _format_display_name_from_filename(filename: str) -> str:
@@ -143,16 +184,29 @@ def run_scrape():
             p2_data = _read_csv_table(p2_file)
             h2h_data = _read_csv_table(h2h_file)
 
+            p1_id = _clean_id(matchup_res["player1"].get("id"))
+            p1_headshot = _clean_str(matchup_res["player1"].get("headshot_url")) or (
+                f"https://content.mlb.com/images/headshots/current/60x60/{p1_id}@3x.png" if p1_id else None
+            )
+            p2_id = _clean_id(matchup_res["player2"].get("id"))
+            p2_headshot = _clean_str(matchup_res["player2"].get("headshot_url")) or (
+                f"https://content.mlb.com/images/headshots/current/60x60/{p2_id}@3x.png" if p2_id else None
+            )
+
             p1_payload = {
                 **p1_data,
                 "name": matchup_res["player1"]["name"],
                 "role": "Pitcher",
+                "id": p1_id,
+                "headshot_url": p1_headshot,
                 "display_name": f"{matchup_res['player1']['name']} (Pitcher Arsenal)",
             }
             p2_payload = {
                 **p2_data,
                 "name": matchup_res["player2"]["name"],
                 "role": "Batter",
+                "id": p2_id,
+                "headshot_url": p2_headshot,
                 "display_name": f"{matchup_res['player2']['name']} (Pitches Faced)",
             }
             count_suffix = f" [Count: {count}]" if count else ""
@@ -179,11 +233,16 @@ def run_scrape():
                 "player2_filename": p2_file.name,
                 "player1_name": matchup_res["player1"]["name"],
                 "player2_name": matchup_res["player2"]["name"],
+                "player1_id": p1_id,
+                "player2_id": p2_id,
+                "player1_headshot_url": p1_headshot,
+                "player2_headshot_url": p2_headshot,
             }
             recent_searches_session[:] = [
                 item for item in recent_searches_session if item["filename"] != h2h_file.name
             ]
             recent_searches_session.insert(0, entry)
+            _save_recent_session()
 
             return jsonify({
                 "success": True,
@@ -205,6 +264,24 @@ def run_scrape():
             })
         else:
             # Single pitcher search
+            search_service = (
+                current_app.config.get("PLAYER_SEARCH_SERVICE")
+                or getattr(pipeline, "player_search", None)
+                or PlayerSearchService()
+            )
+            p_info = None
+            try:
+                p_info = search_service.find_pitcher(pitcher)
+            except Exception:
+                pass
+            single_player_id = _clean_id(getattr(p_info, "player_id", None))
+            single_headshot_url = (
+                f"https://content.mlb.com/images/headshots/current/60x60/{single_player_id}@3x.png"
+                if single_player_id
+                else None
+            )
+            single_player_name = _clean_str(getattr(p_info, "full_name", None)) or str(pitcher)
+
             try:
                 exported_file = pipeline.scrape_pitcher_arsenal_to_csv(
                     pitcher=pitcher,
@@ -219,7 +296,7 @@ def run_scrape():
                 return jsonify({"error": str(e)}), 500
 
             count_label = f" [Count: {count}]" if count else ""
-            query_name = f"{pitcher}{count_label} ({season})"
+            query_name = f"{single_player_name}{count_label} ({season})"
 
     elif search_mode == "batter":
         batter = data.get("batter_name")
@@ -254,16 +331,29 @@ def run_scrape():
             p2_data = _read_csv_table(p2_file)
             h2h_data = _read_csv_table(h2h_file)
 
+            p1_id = _clean_id(matchup_res["player1"].get("id"))
+            p1_headshot = _clean_str(matchup_res["player1"].get("headshot_url")) or (
+                f"https://content.mlb.com/images/headshots/current/60x60/{p1_id}@3x.png" if p1_id else None
+            )
+            p2_id = _clean_id(matchup_res["player2"].get("id"))
+            p2_headshot = _clean_str(matchup_res["player2"].get("headshot_url")) or (
+                f"https://content.mlb.com/images/headshots/current/60x60/{p2_id}@3x.png" if p2_id else None
+            )
+
             p1_payload = {
                 **p1_data,
                 "name": matchup_res["player1"]["name"],
                 "role": "Batter",
+                "id": p1_id,
+                "headshot_url": p1_headshot,
                 "display_name": f"{matchup_res['player1']['name']} (Pitches Faced)",
             }
             p2_payload = {
                 **p2_data,
                 "name": matchup_res["player2"]["name"],
                 "role": "Pitcher",
+                "id": p2_id,
+                "headshot_url": p2_headshot,
                 "display_name": f"{matchup_res['player2']['name']} (Pitcher Arsenal)",
             }
             count_suffix = f" [Count: {count}]" if count else ""
@@ -290,11 +380,16 @@ def run_scrape():
                 "player2_filename": p2_file.name,
                 "player1_name": matchup_res["player1"]["name"],
                 "player2_name": matchup_res["player2"]["name"],
+                "player1_id": p1_id,
+                "player2_id": p2_id,
+                "player1_headshot_url": p1_headshot,
+                "player2_headshot_url": p2_headshot,
             }
             recent_searches_session[:] = [
                 item for item in recent_searches_session if item["filename"] != h2h_file.name
             ]
             recent_searches_session.insert(0, entry)
+            _save_recent_session()
 
             return jsonify({
                 "success": True,
@@ -316,6 +411,24 @@ def run_scrape():
             })
         else:
             # Single batter search
+            search_service = (
+                current_app.config.get("PLAYER_SEARCH_SERVICE")
+                or getattr(pipeline, "player_search", None)
+                or PlayerSearchService()
+            )
+            b_info = None
+            try:
+                b_info = search_service.find_batter(batter)
+            except Exception:
+                pass
+            single_player_id = _clean_id(getattr(b_info, "player_id", None))
+            single_headshot_url = (
+                f"https://content.mlb.com/images/headshots/current/60x60/{single_player_id}@3x.png"
+                if single_player_id
+                else None
+            )
+            single_player_name = _clean_str(getattr(b_info, "full_name", None)) or str(batter)
+
             try:
                 exported_file = pipeline.scrape_batter_pitches_to_csv(
                     batter=batter,
@@ -330,7 +443,7 @@ def run_scrape():
                 return jsonify({"error": str(e)}), 500
 
             count_label = f" [Count: {count}]" if count else ""
-            query_name = f"{batter}{count_label} ({season})"
+            query_name = f"{single_player_name}{count_label} ({season})"
 
     else:
         return jsonify({"error": f"Invalid search mode: {search_mode}"}), 400
@@ -348,6 +461,9 @@ def run_scrape():
         "timestamp": exported_file.stat().st_mtime if exported_file.exists() else 0,
         "rows_count": csv_info["total_rows"],
         "is_matchup": False,
+        "player_id": single_player_id,
+        "player_name": single_player_name,
+        "headshot_url": single_headshot_url,
     }
 
     # Prepend to session storage (avoid duplicates)
@@ -355,6 +471,7 @@ def run_scrape():
         item for item in recent_searches_session if item["filename"] != exported_file.name
     ]
     recent_searches_session.insert(0, entry)
+    _save_recent_session()
 
     return jsonify({
         "success": True,
@@ -365,6 +482,9 @@ def run_scrape():
         "search_mode": search_mode,
         "season": season,
         "count": count,
+        "player_id": single_player_id,
+        "player_name": single_player_name,
+        "headshot_url": single_headshot_url,
         "columns": csv_info["columns"],
         "rows": csv_info["rows"],
         "total_rows": csv_info["total_rows"],
@@ -374,6 +494,7 @@ def run_scrape():
 @api_bp.route("/recent", methods=["GET"])
 def get_recent_searches():
     """List recent searches from session and output directory."""
+    _load_recent_session()
     output_dir = _get_output_dir()
     existing_files = {f.name: f for f in output_dir.glob("*.csv")}
 
@@ -384,6 +505,8 @@ def get_recent_searches():
 
     # Check for any CSV files in output folder not yet in session
     session_filenames = {item["filename"] for item in active_session}
+    search_service: Optional[PlayerSearchService] = None
+
     for fname, fpath in existing_files.items():
         if fname not in session_filenames:
             try:
@@ -394,7 +517,70 @@ def get_recent_searches():
             except Exception:
                 count = 0
 
-            active_session.append({
+            if search_service is None:
+                search_service = current_app.config.get("PLAYER_SEARCH_SERVICE") or PlayerSearchService()
+
+            is_match = "_vs_" in fname
+            stem = fpath.stem
+            player1_id = None
+            player1_name = None
+            player1_headshot = None
+            player2_id = None
+            player2_name = None
+            player2_headshot = None
+            single_id = None
+            single_name = None
+            single_headshot = None
+
+            if is_match:
+                parts = stem.split("_vs_")
+                p1_candidate = parts[0].replace("_", " ").title()
+                p2_raw = parts[1] if len(parts) > 1 else ""
+                p2_words = [w for w in p2_raw.split("_") if not w.isdigit() and w != "count"]
+                p2_candidate = " ".join(p2_words).title()
+
+                p1_info = search_service.find_pitcher(p1_candidate) or search_service.find_batter(p1_candidate)
+                p2_info = search_service.find_batter(p2_candidate) or search_service.find_pitcher(p2_candidate)
+                if p1_info:
+                    player1_id = _clean_id(getattr(p1_info, "player_id", None))
+                    p1_nm = _clean_str(getattr(p1_info, "full_name", None))
+                    player1_name = p1_nm or p1_candidate
+                    player1_headshot = (
+                        f"https://content.mlb.com/images/headshots/current/60x60/{player1_id}@3x.png"
+                        if player1_id
+                        else None
+                    )
+                else:
+                    player1_name = p1_candidate
+                if p2_info:
+                    player2_id = _clean_id(getattr(p2_info, "player_id", None))
+                    p2_nm = _clean_str(getattr(p2_info, "full_name", None))
+                    player2_name = p2_nm or p2_candidate
+                    player2_headshot = (
+                        f"https://content.mlb.com/images/headshots/current/60x60/{player2_id}@3x.png"
+                        if player2_id
+                        else None
+                    )
+                else:
+                    player2_name = p2_candidate
+            else:
+                clean_name = stem.replace("_pitch_arsenal", "").replace("_pitches_faced", "")
+                name_words = [w for w in clean_name.split("_") if not w.isdigit() and w != "count"]
+                cand = " ".join(name_words).title()
+                s_info = search_service.find_pitcher(cand) or search_service.find_batter(cand)
+                if s_info:
+                    single_id = _clean_id(getattr(s_info, "player_id", None))
+                    s_nm = _clean_str(getattr(s_info, "full_name", None))
+                    single_name = s_nm or cand
+                    single_headshot = (
+                        f"https://content.mlb.com/images/headshots/current/60x60/{single_id}@3x.png"
+                        if single_id
+                        else None
+                    )
+                else:
+                    single_name = cand
+
+            item = {
                 "filename": fname,
                 "query_name": _format_display_name_from_filename(fname),
                 "display_name": _format_display_name_from_filename(fname),
@@ -402,7 +588,30 @@ def get_recent_searches():
                 "season": "",
                 "timestamp": fpath.stat().st_mtime,
                 "rows_count": count,
-            })
+                "is_matchup": is_match,
+            }
+            if is_match:
+                item.update({
+                    "player1_id": player1_id,
+                    "player1_name": player1_name,
+                    "player1_headshot_url": player1_headshot,
+                    "player2_id": player2_id,
+                    "player2_name": player2_name,
+                    "player2_headshot_url": player2_headshot,
+                })
+            else:
+                item.update({
+                    "player_id": single_id,
+                    "player_name": single_name,
+                    "headshot_url": single_headshot,
+                })
+
+            active_session.append(item)
+            recent_searches_session.append(item)
+
+    if len(active_session) != len(recent_searches_session):
+        recent_searches_session[:] = list(active_session)
+    _save_recent_session()
 
     # Sort descending by timestamp
     active_session.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
@@ -554,6 +763,7 @@ def clear_output():
     output_dir = _get_output_dir()
     count = clear_output_directory(output_dir)
     recent_searches_session.clear()
+    _save_recent_session()
     logger.info(f"Cleared {count} files from '{output_dir}'.")
     return jsonify({"success": True, "cleared_count": count})
 

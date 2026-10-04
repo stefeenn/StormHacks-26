@@ -39,6 +39,8 @@ def mock_search_service():
         return []
 
     service.search_player.side_effect = search_side_effect
+    service.find_pitcher.side_effect = lambda q: mock_pitcher if "skubal" in str(q).lower() else None
+    service.find_batter.side_effect = lambda q: mock_batter if "ohtani" in str(q).lower() else None
     return service
 
 
@@ -95,7 +97,7 @@ def test_index_page_loads(client):
     resp = client.get("/")
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
-    assert "Baseball Savant Statcast Explorer" in html
+    assert "Pitch Perfect" in html
     assert "header-center-title" in html
     assert "recent-dropdown-container" in html
     assert "csv-modal" in html
@@ -366,6 +368,55 @@ def test_api_scrape_with_count_empty(client, mock_pipeline):
         season=2026,
         count=None,
     )
+
+
+def test_api_scrape_and_recent_include_headshots(client):
+    """Verify single player scrape returns headshot URL and is listed in /api/recent."""
+    payload = {
+        "search_mode": "pitcher",
+        "pitcher_name": "Tarik Skubal",
+        "pitcher_hand": "L",
+        "season": 2026,
+    }
+    resp = client.post("/api/scrape", json=payload)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["player_id"] == 669373
+    assert data["headshot_url"] == "https://content.mlb.com/images/headshots/current/60x60/669373@3x.png"
+
+    # Verify /api/recent contains the headshot URL
+    recent_resp = client.get("/api/recent")
+    assert recent_resp.status_code == 200
+    recent_data = recent_resp.get_json()
+    item = next((it for it in recent_data["recent"] if it["filename"] == data["filename"]), None)
+    assert item is not None
+    assert item["player_id"] == 669373
+    assert item["headshot_url"] == "https://content.mlb.com/images/headshots/current/60x60/669373@3x.png"
+
+
+def test_api_scrape_matchup_includes_both_headshots(client):
+    """Verify matchup scrape returns and saves both player headshots for diagonal merge."""
+    payload = {
+        "search_mode": "pitcher",
+        "pitcher_name": "Tarik Skubal",
+        "pitcher_hand": "L",
+        "batter_name": "Shohei Ohtani",
+        "batter_stance": "L",
+        "season": 2026,
+    }
+    resp = client.post("/api/scrape", json=payload)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["is_matchup"] is True
+
+    # Verify /api/recent contains matchup item with both headshot URLs
+    recent_resp = client.get("/api/recent")
+    recent_data = recent_resp.get_json()
+    item = next((it for it in recent_data["recent"] if it["filename"] == data["filename"]), None)
+    assert item is not None
+    assert item["is_matchup"] is True
+    assert "player1_name" in item
+    assert "player2_name" in item
 
 
 

@@ -10,7 +10,6 @@ export class IntroAnimationController {
     this.ballTrack = document.querySelector(".intro-ball-track");
     this.shockwave = document.getElementById("intro-shockwave");
     this.skipBtn = document.getElementById("intro-skip-btn");
-    this.replayBtn = document.getElementById("btn-replay-intro");
 
     this.isPlaying = false;
     this.timers = [];
@@ -42,15 +41,6 @@ export class IntroAnimationController {
     // Skip button click
     if (this.skipBtn) {
       this.skipBtn.addEventListener("click", () => this.finishImmediately());
-    }
-
-    // Replay button on header baseball logo
-    if (this.replayBtn) {
-      this.replayBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        this.replay();
-      });
-      this.replayBtn.setAttribute("title", "Replay Fastball Pitch Intro");
     }
 
     // Start introductory sequence

@@ -19,10 +19,13 @@
   --color-success: #10b981;
   --color-danger: #ef4444;
 
-  /* Red square thumbnail for recent search items */
-  --thumbnail-color: #dc2626;
-  --thumbnail-border: #ef4444;
-  --thumbnail-glow: rgba(220, 38, 38, 0.4);
+  /* Thumbnail variables for recent search items */
+  --thumbnail-bg: #1e293b;
+  --thumbnail-border: rgba(255, 255, 255, 0.18);
+  --thumbnail-border-hover: #38bdf8;
+  --thumbnail-glow: rgba(14, 165, 233, 0.35);
+  --thumbnail-divider: rgba(255, 255, 255, 0.88);
+  --thumbnail-color: #1e293b;
 
   --font-family-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

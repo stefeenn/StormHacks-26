@@ -67,3 +67,19 @@ def test_search_empty_query():
     assert service.search_player("") == []
     assert service.search_player("   ") == []
 
+
+def test_player_info_headshot_url():
+    player = PlayerInfo(
+        player_id=669373,
+        full_name="Tarik Skubal",
+        primary_position="P",
+        is_pitcher=True,
+        pitch_hand="L",
+        bat_side="R",
+        active=True,
+    )
+    assert player.headshot_url == "https://content.mlb.com/images/headshots/current/60x60/669373@3x.png"
+    d = player.to_dict()
+    assert d["headshot_url"] == "https://content.mlb.com/images/headshots/current/60x60/669373@3x.png"
+    assert d["id"] == 669373
+

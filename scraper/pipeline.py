@@ -374,16 +374,20 @@ class ScraperPipeline:
             result = {
                 "mode": "batter",
                 "player1": {
+                    "id": b_info.player_id if b_info else None,
                     "name": batter_name,
                     "role": "Batter",
                     "type": "batter",
                     "file": p1_file,
+                    "headshot_url": b_info.headshot_url if b_info else None,
                 },
                 "player2": {
+                    "id": p_info.player_id if p_info else None,
                     "name": pitcher_name,
                     "role": "Pitcher",
                     "type": "pitcher",
                     "file": p2_file,
+                    "headshot_url": p_info.headshot_url if p_info else None,
                 },
                 "matchup": {
                     "name": f"{batter_name} vs {pitcher_name}",
@@ -428,16 +432,20 @@ class ScraperPipeline:
             result = {
                 "mode": "pitcher",
                 "player1": {
+                    "id": p_info.player_id if p_info else None,
                     "name": pitcher_name,
                     "role": "Pitcher",
                     "type": "pitcher",
                     "file": p1_file,
+                    "headshot_url": p_info.headshot_url if p_info else None,
                 },
                 "player2": {
+                    "id": b_info.player_id if b_info else None,
                     "name": batter_name,
                     "role": "Batter",
                     "type": "batter",
                     "file": p2_file,
+                    "headshot_url": b_info.headshot_url if b_info else None,
                 },
                 "matchup": {
                     "name": f"{pitcher_name} vs {batter_name}",

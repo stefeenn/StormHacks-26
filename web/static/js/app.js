@@ -6,7 +6,7 @@ import { api } from "./api.js?v=4";
 import { CSVModalController } from "./modal.js?v=4";
 import { DataModelController } from "./data_model.js?v=4";
 import { IntroAnimationController } from "./intro.js?v=4";
-import { RecentSearchesController } from "./recent.js?v=4";
+import { RecentSearchesController } from "./recent.js?v=12";
 import { WizardController } from "./wizard.js?v=4";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -46,5 +46,5 @@ document.addEventListener("DOMContentLoaded", () => {
     api.sendUnloadCleanupBeacon();
   });
 
-  console.log("⚾ Baseball Savant Explorer Interface initialized.");
+  console.log("⚾ Pitch Perfect Interface initialized.");
 });
