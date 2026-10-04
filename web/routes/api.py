@@ -2,13 +2,18 @@
 
 import csv
 import io
+import json
 import logging
 from pathlib import Path
+import time
 from typing import Any, Dict, List, Optional
 import zipfile
-from flask import Blueprint, current_app, jsonify, request, send_file
+from flask import Blueprint, current_app, jsonify, make_response, request, send_file
 
+from dataModel.threeSourceModel import evaluate_and_report, to_json
 from scraper.config import DEFAULT_SEASON, normalize_batter_stance, normalize_count, normalize_pitcher_hand
+from scraper.data_model_sync import DEFAULT_DATA_MODEL_DIR, DataModelSync
+from scraper.odds_provider import normalize_american_odds
 from scraper.pipeline import ScraperPipeline
 from scraper.player_search import PlayerSearchService
 from scraper.utils import clear_output_directory
@@ -195,6 +200,8 @@ def run_scrape():
                 "player1": p1_payload,
                 "player2": p2_payload,
                 "matchup": h2h_payload,
+                "data_model_synced": matchup_res.get("data_model_sync", {}).get("success", False),
+                "data_model_info": matchup_res.get("data_model_sync"),
             })
         else:
             # Single pitcher search
@@ -304,6 +311,8 @@ def run_scrape():
                 "player1": p1_payload,
                 "player2": p2_payload,
                 "matchup": h2h_payload,
+                "data_model_synced": matchup_res.get("data_model_sync", {}).get("success", False),
+                "data_model_info": matchup_res.get("data_model_sync"),
             })
         else:
             # Single batter search
@@ -596,4 +605,386 @@ def download_zip():
         as_attachment=True,
         download_name=zip_filename,
     )
+
+
+# ==============================================================================
+# THREE-SOURCE DATA MODEL INTEGRATION ENDPOINTS
+# ==============================================================================
+
+def _get_data_model_dir() -> Path:
+    """Resolve dataModel directory from Flask app config or default."""
+    configured = current_app.config.get("DATA_MODEL_DIR", DEFAULT_DATA_MODEL_DIR)
+    path = Path(configured)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _resolve_matchup_trio_from_output(filename: str, output_dir: Path) -> Optional[Dict[str, Any]]:
+    """Resolve pitcher, batter, and matchup CSV files for a given head-to-head filename."""
+    h2h_file = output_dir / filename
+    if not h2h_file.exists() or not h2h_file.is_file():
+        return None
+
+    # 1. First check in-memory recent searches session
+    session_match = next((item for item in recent_searches_session if item["filename"] == filename), None)
+    if session_match and session_match.get("is_matchup"):
+        p1_fname = session_match.get("player1_filename")
+        p2_fname = session_match.get("player2_filename")
+        if p1_fname and p2_fname:
+            p1_file = output_dir / p1_fname
+            p2_file = output_dir / p2_fname
+            if p1_file.exists() and p2_file.exists():
+                is_p1_pitcher = session_match.get("search_mode", "pitcher") == "pitcher"
+                return {
+                    "player1": {
+                        "name": session_match.get("player1_name", p1_fname),
+                        "type": "pitcher" if is_p1_pitcher else "batter",
+                        "role": "Pitcher" if is_p1_pitcher else "Batter",
+                        "file": str(p1_file),
+                    },
+                    "player2": {
+                        "name": session_match.get("player2_name", p2_fname),
+                        "type": "batter" if is_p1_pitcher else "pitcher",
+                        "role": "Batter" if is_p1_pitcher else "Pitcher",
+                        "file": str(p2_file),
+                    },
+                    "matchup": {
+                        "name": session_match.get("query_name", filename),
+                        "role": "Head-to-Head",
+                        "type": "matchup",
+                        "file": str(h2h_file),
+                    },
+                    "season": session_match.get("season", DEFAULT_SEASON),
+                    "count": session_match.get("count"),
+                    "mode": session_match.get("search_mode", "pitcher"),
+                }
+
+    # 2. Heuristic discovery from filename: e.g. chris_sale_vs_shohei_ohtani_2026.csv or with count
+    stem = h2h_file.stem
+    if "_vs_" in stem:
+        parts = stem.split("_vs_")
+        if len(parts) == 2:
+            p1_slug = parts[0]
+            rest_str = parts[1]
+            # Match potential season/count suffixes:
+            # e.g. shohei_ohtani_2026 or shohei_ohtani_2026_count_0_2
+            subparts = rest_str.split("_")
+            season = DEFAULT_SEASON
+            count = None
+            if "count" in subparts:
+                c_idx = subparts.index("count")
+                if c_idx + 2 < len(subparts):
+                    count = f"{subparts[c_idx + 1]}-{subparts[c_idx + 2]}"
+                p2_slug = "_".join(subparts[:c_idx - 1])
+                try:
+                    season = int(subparts[c_idx - 1])
+                except (ValueError, IndexError):
+                    season = DEFAULT_SEASON
+            else:
+                p2_slug = "_".join(subparts[:-1]) if subparts[-1].isdigit() else rest_str
+                try:
+                    season = int(subparts[-1])
+                except (ValueError, IndexError):
+                    season = DEFAULT_SEASON
+
+            count_tag = f"_count_{count.replace('-', '_')}" if count else ""
+            # Check p1 as pitcher, p2 as batter
+            cand_p1 = output_dir / f"{p1_slug}_{season}{count_tag}_pitch_arsenal.csv"
+            cand_p2 = output_dir / f"{p2_slug}_{season}{count_tag}_pitches_faced.csv"
+            if cand_p1.exists() and cand_p2.exists():
+                p1_name = " ".join([w.capitalize() for w in p1_slug.split("_")])
+                p2_name = " ".join([w.capitalize() for w in p2_slug.split("_")])
+                return {
+                    "player1": {"name": p1_name, "type": "pitcher", "role": "Pitcher", "file": str(cand_p1)},
+                    "player2": {"name": p2_name, "type": "batter", "role": "Batter", "file": str(cand_p2)},
+                    "matchup": {"name": f"{p1_name} vs {p2_name}", "role": "Head-to-Head", "type": "matchup", "file": str(h2h_file)},
+                    "season": season,
+                    "count": count,
+                    "mode": "pitcher",
+                }
+
+            # Check p1 as batter, p2 as pitcher
+            cand_b1 = output_dir / f"{p1_slug}_{season}{count_tag}_pitches_faced.csv"
+            cand_p2 = output_dir / f"{p2_slug}_{season}{count_tag}_pitch_arsenal.csv"
+            if cand_b1.exists() and cand_p2.exists():
+                p1_name = " ".join([w.capitalize() for w in p1_slug.split("_")])
+                p2_name = " ".join([w.capitalize() for w in p2_slug.split("_")])
+                return {
+                    "player1": {"name": p1_name, "type": "batter", "role": "Batter", "file": str(cand_b1)},
+                    "player2": {"name": p2_name, "type": "pitcher", "role": "Pitcher", "file": str(cand_p2)},
+                    "matchup": {"name": f"{p1_name} vs {p2_name}", "role": "Head-to-Head", "type": "matchup", "file": str(h2h_file)},
+                    "season": season,
+                    "count": count,
+                    "mode": "batter",
+                }
+
+    return None
+
+
+@api_bp.route("/model/status", methods=["GET"])
+def get_model_status():
+    """Retrieve the current dataModel synchronization status and latest run results."""
+    data_dir = _get_data_model_dir()
+    meta_path = data_dir / "run_meta.json"
+    output_path = data_dir / "model_output.json"
+    plot_path = data_dir / "model_plot.png"
+
+    has_synced_data = False
+    meta_data = None
+    if meta_path.exists():
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta_data = json.load(f)
+            # Verify input files exist
+            p_file = data_dir / "inputPitcher.csv"
+            b_file = data_dir / "inputBatter.csv"
+            h_file = data_dir / "inputH2H.csv"
+            has_synced_data = p_file.exists() and b_file.exists() and h_file.exists()
+        except Exception as e:
+            logger.warning(f"Could not load run_meta.json: {e}")
+
+    has_output = False
+    last_output = None
+    if output_path.exists():
+        try:
+            with open(output_path, "r", encoding="utf-8") as f:
+                last_output = json.load(f)
+            has_output = True
+        except Exception as e:
+            logger.warning(f"Could not load model_output.json: {e}")
+
+    return jsonify({
+        "success": True,
+        "has_synced_data": has_synced_data,
+        "meta": meta_data,
+        "has_output": has_output,
+        "output": last_output,
+        "has_plot": plot_path.exists(),
+        "plot_url": f"/api/model/plot?t={int(time.time() * 1000)}" if plot_path.exists() else None,
+    })
+
+
+@api_bp.route("/model/samples", methods=["GET"])
+def get_model_samples():
+    """List all available matchup data samples from output folder and session history."""
+    output_dir = _get_output_dir()
+    data_dir = _get_data_model_dir()
+    meta_path = data_dir / "run_meta.json"
+
+    current_source = None
+    if meta_path.exists():
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+                current_source = meta.get("matchup", {}).get("source_file")
+        except Exception:
+            pass
+
+    samples = []
+    seen_filenames = set()
+
+    # 1. Collect from session
+    for item in recent_searches_session:
+        if item.get("is_matchup") or "_vs_" in item.get("filename", ""):
+            fname = item["filename"]
+            fpath = output_dir / fname
+            if fpath.exists() and fname not in seen_filenames:
+                seen_filenames.add(fname)
+                p1_name = item.get("player1_name", "")
+                p2_name = item.get("player2_name", "")
+                samples.append({
+                    "filename": fname,
+                    "display_name": item.get("display_name") or item.get("query_name") or _format_display_name_from_filename(fname),
+                    "pitcher_name": p1_name if item.get("search_mode") == "pitcher" else p2_name,
+                    "batter_name": p2_name if item.get("search_mode") == "pitcher" else p1_name,
+                    "season": item.get("season", DEFAULT_SEASON),
+                    "count": item.get("count"),
+                    "timestamp": item.get("timestamp", fpath.stat().st_mtime),
+                    "is_active": (fname == current_source),
+                })
+
+    # 2. Collect from disk
+    for fpath in sorted(output_dir.glob("*_vs_*.csv"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if fpath.name not in seen_filenames:
+            seen_filenames.add(fpath.name)
+            trio = _resolve_matchup_trio_from_output(fpath.name, output_dir)
+            p_name = ""
+            b_name = ""
+            season = DEFAULT_SEASON
+            count = None
+            if trio:
+                p_name = trio["player1"]["name"] if trio["player1"]["type"] == "pitcher" else trio["player2"]["name"]
+                b_name = trio["player2"]["name"] if trio["player1"]["type"] == "pitcher" else trio["player1"]["name"]
+                season = trio.get("season", DEFAULT_SEASON)
+                count = trio.get("count")
+
+            display_title = _format_display_name_from_filename(fpath.name)
+            if p_name and b_name:
+                count_str = f" [Count: {count}]" if count else ""
+                display_title = f"{p_name} vs {b_name}{count_str} ({season})"
+
+            samples.append({
+                "filename": fpath.name,
+                "display_name": display_title,
+                "pitcher_name": p_name,
+                "batter_name": b_name,
+                "season": season,
+                "count": count,
+                "timestamp": fpath.stat().st_mtime,
+                "is_active": (fpath.name == current_source),
+            })
+
+    # Sort descending by timestamp
+    samples.sort(key=lambda s: s.get("timestamp", 0), reverse=True)
+    return jsonify({"success": True, "samples": samples, "total_samples": len(samples)})
+
+
+@api_bp.route("/model/load-sample", methods=["POST"])
+def load_model_sample():
+    """Load and synchronize a historical matchup sample into dataModel."""
+    data = request.get_json(silent=True) or {}
+    filename = data.get("filename", "").strip()
+    if not filename:
+        return jsonify({"error": "Filename is required"}), 400
+
+    # Prevent traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return jsonify({"error": "Invalid filename"}), 400
+
+    output_dir = _get_output_dir()
+    trio = _resolve_matchup_trio_from_output(filename, output_dir)
+    if not trio:
+        return jsonify({"error": f"Matchup companion files for '{filename}' could not be resolved."}), 404
+
+    data_dir = _get_data_model_dir()
+    syncer = DataModelSync(data_model_dir=data_dir)
+
+    pitcher_hand = data.get("pitcher_hand")
+    batter_stance = data.get("batter_stance")
+
+    try:
+        sync_result = syncer.sync_matchup(
+            matchup_result=trio,
+            pitcher_hand=pitcher_hand,
+            batter_stance=batter_stance,
+        )
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "sync_result": sync_result,
+        })
+    except Exception as e:
+        logger.error(f"Failed to load model sample '{filename}': {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/model/run", methods=["POST"])
+def run_data_model():
+    """Execute the Three-Source Velocity Model bet evaluation."""
+    data = request.get_json(silent=True) or {}
+
+    raw_line = data.get("bet_line", 95.5)
+    try:
+        bet_line = float(raw_line)
+        if bet_line <= 0 or bet_line > 130:
+            return jsonify({"error": "Betting velocity line must be between 50 and 125 mph."}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid numerical betting velocity line."}), 400
+
+    try:
+        under_odds = normalize_american_odds(data.get("under_odds", -110), default=-110)
+    except ValueError as e:
+        return jsonify({"error": f"Invalid Under odds: {e}"}), 400
+
+    try:
+        over_odds = normalize_american_odds(data.get("over_odds", -110), default=-110)
+    except ValueError as e:
+        return jsonify({"error": f"Invalid Over odds: {e}"}), 400
+
+    overrides = {}
+    if "stake" in data:
+        try:
+            overrides["stake"] = float(data["stake"])
+        except (ValueError, TypeError):
+            pass
+
+    if "bankroll" in data:
+        try:
+            overrides["bankroll"] = float(data["bankroll"]) if data["bankroll"] is not None else None
+        except (ValueError, TypeError):
+            pass
+
+    if "kelly_fraction" in data:
+        try:
+            overrides["kelly_fraction"] = float(data["kelly_fraction"])
+        except (ValueError, TypeError):
+            pass
+
+    if "arsenal_column" in data and data["arsenal_column"]:
+        overrides["arsenal_column"] = str(data["arsenal_column"])
+
+    if "batter_column" in data and data["batter_column"]:
+        overrides["batter_column"] = str(data["batter_column"])
+
+    if "n_sims" in data:
+        try:
+            overrides["n_sims"] = max(100, min(20000, int(data["n_sims"])))
+        except (ValueError, TypeError):
+            pass
+
+    # Ensure required input files exist in dataModel/
+    data_dir = _get_data_model_dir()
+    p_file = data_dir / "inputPitcher.csv"
+    b_file = data_dir / "inputBatter.csv"
+    h_file = data_dir / "inputH2H.csv"
+    if not (p_file.exists() or h_file.exists()):
+        return jsonify({
+            "error": "No pitch speed data found in dataModel/. Please run a matchup scrape or load a previous sample first."
+        }), 400
+
+    plot_path = data_dir / "model_plot.png"
+    json_path = data_dir / "model_output.json"
+
+    try:
+        result = evaluate_and_report(
+            bet_line=bet_line,
+            under_odds=under_odds,
+            over_odds=over_odds,
+            show_details_flag=False,
+            show_plot_flag=True,
+            save_plot_only=True,
+            output_plot_path=str(plot_path),
+            output_json_path=str(json_path),
+            arsenal_csv=str(p_file) if p_file.exists() else "",
+            batter_csv=str(b_file) if b_file.exists() else "",
+            matchup_csv=str(h_file) if h_file.exists() else "",
+            **overrides,
+        )
+
+        plot_url = f"/api/model/plot?t={int(time.time() * 1000)}" if plot_path.exists() else None
+
+        return jsonify({
+            "success": True,
+            "result": to_json(result),
+            "plot_url": plot_url,
+        })
+    except Exception as e:
+        logger.error(f"Error executing data model: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/model/plot", methods=["GET"])
+def get_model_plot():
+    """Serve the generated model plot image."""
+    data_dir = _get_data_model_dir()
+    plot_file = data_dir / "model_plot.png"
+    if not plot_file.exists() or not plot_file.is_file():
+        return jsonify({"error": "No model plot generated yet."}), 404
+
+    response = make_response(send_file(plot_file, mimetype="image/png"))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 

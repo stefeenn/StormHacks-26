@@ -9,9 +9,11 @@ export class RecentSearchesController {
   /**
    * @param {Object} options
    * @param {import("./modal.js").CSVModalController} options.modalController
+   * @param {import("./data_model.js").DataModelController} [options.dataModelController]
    */
-  constructor({ modalController }) {
+  constructor({ modalController, dataModelController = null }) {
     this.modalController = modalController;
+    this.dataModelController = dataModelController;
 
     this.containerEl = document.getElementById("recent-dropdown-container");
     this.triggerBtn = document.getElementById("recent-dropdown-trigger");
@@ -120,14 +122,22 @@ export class RecentSearchesController {
 
       // Red square thumbnail as requested:
       // "a small thumbnail (lets keep it to a red square for the moment, it will be replaced) with the name of the pitcher/batter search on top of it should be visible for each recent query. the text is a hyperlink so that when you click on it it can pop out a screen reading out the data from the csv, and essentially re-access the generated file."
+      const isMatchup = item.is_matchup || (item.filename && item.filename.includes("_vs_"));
+      const modelBtnHtml = isMatchup
+        ? `<button class="btn-recent-model-direct" type="button" title="Evaluate velocity betting model for this matchup">🎯 Model</button>`
+        : "";
+
       li.innerHTML = `
         <div class="thumbnail-red-square" title="Placeholder thumbnail for ${item.query_name || item.display_name}">
           <span class="thumbnail-initials">${initials}</span>
         </div>
         <div class="recent-item-info">
-          <a href="#" class="recent-item-link" title="Click to view CSV data">
-            ${item.query_name || item.display_name}
-          </a>
+          <div class="recent-item-title-row">
+            <a href="#" class="recent-item-link" title="Click to view CSV data">
+              ${item.query_name || item.display_name}
+            </a>
+            ${modelBtnHtml}
+          </div>
           <span class="recent-item-meta">
             <span>${item.rows_count ? `${item.rows_count} pitch types` : "CSV Export"}</span>
             ${item.season ? `<span>• Season ${item.season}</span>` : ""}
@@ -147,6 +157,20 @@ export class RecentSearchesController {
           alert(`Could not open CSV file: ${err.message}`);
         }
       });
+
+      // Direct model button click
+      const modelDirectBtn = li.querySelector(".btn-recent-model-direct");
+      if (modelDirectBtn) {
+        modelDirectBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          this.close();
+          if (this.dataModelController) {
+            await this.dataModelController.loadSample(item.filename);
+            this.dataModelController.open({ is_matchup: true, filename: item.filename });
+          }
+        });
+      }
 
       this.listEl.appendChild(li);
     });

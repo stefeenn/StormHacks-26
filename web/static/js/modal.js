@@ -5,7 +5,9 @@
  */
 
 export class CSVModalController {
-  constructor() {
+  constructor(options = {}) {
+    this.dataModelController = options.dataModelController || null;
+
     this.modalEl = document.getElementById("csv-modal");
     this.titleEl = document.getElementById("modal-query-title");
     this.filenameEl = document.getElementById("modal-file-name");
@@ -14,6 +16,9 @@ export class CSVModalController {
     this.closeBtn = document.getElementById("modal-close-btn");
     this.footerCloseBtn = document.getElementById("modal-footer-close-btn");
     this.downloadBtn = document.getElementById("modal-download-btn");
+
+    // Generate Bet Odds button
+    this.generateOddsBtn = document.getElementById("modal-footer-model-btn");
 
     // Single-view elements
     this.singleViewEl = document.getElementById("modal-single-view");
@@ -115,6 +120,15 @@ export class CSVModalController {
     if (this.rightDownloadBtn) {
       this.rightDownloadBtn.addEventListener("click", () => {
         if (this.currentData?.player2) this._downloadCSV(this.currentData.player2);
+      });
+    }
+
+    // Generate Bet Odds button click
+    if (this.generateOddsBtn) {
+      this.generateOddsBtn.addEventListener("click", () => {
+        if (this.dataModelController) {
+          this.dataModelController.open(this.currentData);
+        }
       });
     }
   }

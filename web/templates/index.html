@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/static/css/wizard.css?v=2">
   <link rel="stylesheet" href="/static/css/dropdown.css?v=2">
   <link rel="stylesheet" href="/static/css/modal.css?v=2">
+  <link rel="stylesheet" href="/static/css/data_model.css?v=3">
 </head>
 <body class="intro-active">
 
@@ -105,8 +106,13 @@
       <p class="header-subtitle">Interactive pitch arsenal & head-to-head matchup query interface</p>
     </div>
 
-    <!-- Dropdown: Top Right Corner of Screen -->
+    <!-- Top Right Corner of Screen -->
     <div class="header-top-right">
+      <button id="btn-open-model-header" class="btn btn-header-model" type="button" title="Open Velocity Betting Model">
+        <span class="btn-model-icon">🎯</span>
+        <span>Velocity Model</span>
+      </button>
+
       <div id="recent-dropdown-container" class="dropdown-container">
         <button id="recent-dropdown-trigger" class="dropdown-trigger-btn" type="button" aria-haspopup="true" aria-expanded="false">
           <span>🕒 Recent Searches</span>
@@ -498,7 +504,9 @@
         type="text"
         placeholder="🔍 Filter pitch types or velocities..."
       >
-      <span id="modal-row-count" class="modal-stats">0 pitch types</span>
+      <div class="modal-toolbar-actions">
+        <span id="modal-row-count" class="modal-stats">0 pitch types</span>
+      </div>
     </div>
 
     <div class="modal-body">
@@ -582,6 +590,9 @@
     </div>
 
     <div class="modal-footer">
+      <button id="modal-footer-model-btn" class="btn btn-model-primary" type="button">
+        🎯 Generate Bet Odds
+      </button>
       <button id="modal-download-btn" class="btn btn-secondary" type="button">
         💾 Download CSV
       </button>
@@ -591,7 +602,328 @@
     </div>
   </dialog>
 
+  <!-- Three-Source Velocity Data Model & Bet Evaluator Modal -->
+  <dialog id="data-model-modal" class="data-model-modal" aria-labelledby="model-title">
+    <div class="model-modal-header">
+      <div class="model-modal-header-info">
+        <div class="model-title-row">
+          <span class="model-badge-icon">🎯</span>
+          <h2 id="model-title">Three-Source Pitch Velocity Model</h2>
+          <span id="model-matchup-badge" class="model-matchup-badge">No Matchup Loaded</span>
+        </div>
+        <p id="model-subtitle" class="model-subtitle">
+          Gaussian mixture bet evaluation using season pitcher arsenal, batter history, and head-to-head Statcast data.
+        </p>
+      </div>
+      <button id="model-close-btn" class="modal-close-btn" type="button" aria-label="Close dialog">✕</button>
+    </div>
+
+    <!-- Sample Management Bar: Fetch Previous Samples -->
+    <div class="model-sample-bar">
+      <div class="sample-bar-left">
+        <label for="model-sample-select" class="sample-label">
+          <span class="icon">📂</span> Fetch Previous Sample:
+        </label>
+        <select id="model-sample-select" class="model-sample-select">
+          <option value="">Loading available samples...</option>
+        </select>
+        <button id="model-refresh-samples-btn" class="btn-refresh-samples" type="button" title="Refresh sample list">🔄</button>
+      </div>
+      <div class="sample-bar-right">
+        <span id="model-sync-indicator" class="model-sync-indicator synced">
+          <span class="sync-dot"></span> <span id="model-sync-text">Checking data...</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="model-modal-body">
+      <!-- Input Controls Section -->
+      <section class="model-inputs-panel">
+        <div class="inputs-panel-title">
+          <h3>🎲 Bet Parameters</h3>
+          <span class="inputs-hint">Configure sportsbook line and American odds</span>
+        </div>
+
+        <form id="model-form" class="model-form" onsubmit="return false;">
+          <div class="form-row-main">
+            <!-- Bet Line (mph) -->
+            <div class="form-group form-group-line">
+              <label for="input-model-line">
+                Sportsbook Line (mph) <span class="required">*</span>
+              </label>
+              <div class="input-with-stepper">
+                <input
+                  type="number"
+                  id="input-model-line"
+                  class="model-input line-input"
+                  value="95.5"
+                  step="0.5"
+                  min="50"
+                  max="125"
+                  required
+                >
+                <span class="unit-tag">mph</span>
+              </div>
+              <div class="line-presets">
+                <button type="button" class="btn-line-preset" data-val="94.5">94.5</button>
+                <button type="button" class="btn-line-preset" data-val="95.0">95.0</button>
+                <button type="button" class="btn-line-preset active" data-val="95.5">95.5</button>
+                <button type="button" class="btn-line-preset" data-val="96.0">96.0</button>
+                <button type="button" class="btn-line-preset" data-val="96.5">96.5</button>
+              </div>
+            </div>
+
+            <!-- Under Odds -->
+            <div class="form-group">
+              <label for="input-model-under-odds">
+                UNDER Odds (American) <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="input-model-under-odds"
+                class="model-input odds-input"
+                value="-110"
+                placeholder="-110"
+                required
+              >
+              <span class="odds-hint">e.g. -110, +105</span>
+            </div>
+
+            <!-- Over Odds -->
+            <div class="form-group">
+              <label for="input-model-over-odds">
+                OVER Odds (American) <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="input-model-over-odds"
+                class="model-input odds-input"
+                value="-110"
+                placeholder="-110"
+                required
+              >
+              <span class="odds-hint">e.g. -110, +100</span>
+            </div>
+          </div>
+
+          <!-- Quick Odds Presets -->
+          <div class="odds-presets-row">
+            <span class="preset-label">Quick Odds:</span>
+            <button type="button" class="btn-odds-preset" data-under="-110" data-over="-110">Even (-110 / -110)</button>
+            <button type="button" class="btn-odds-preset" data-under="-120" data-over="+100">Under Favored (-120 / +100)</button>
+            <button type="button" class="btn-odds-preset" data-under="+100" data-over="-120">Over Favored (+100 / -120)</button>
+          </div>
+
+          <!-- Advanced Collapsible Drawer -->
+          <details class="model-advanced-drawer">
+            <summary class="advanced-summary">
+              <span>⚙️ Advanced Settings (Stake, Bankroll, Stance Splits)</span>
+            </summary>
+            <div class="advanced-grid">
+              <div class="form-group-sm">
+                <label for="input-model-stake">Stake ($)</label>
+                <input type="number" id="input-model-stake" class="model-input-sm" value="100" min="1" step="10">
+              </div>
+              <div class="form-group-sm">
+                <label for="input-model-bankroll">Bankroll ($)</label>
+                <input type="number" id="input-model-bankroll" class="model-input-sm" value="1000" min="0" step="100">
+              </div>
+              <div class="form-group-sm">
+                <label for="input-model-kelly">Kelly Fraction</label>
+                <input type="number" id="input-model-kelly" class="model-input-sm" value="0.25" min="0.05" max="1" step="0.05">
+              </div>
+              <div class="form-group-sm">
+                <label for="select-model-arsenal-col">Batter Stance Split</label>
+                <select id="select-model-arsenal-col" class="model-select-sm">
+                  <option value="Right">Right-Handed Batter</option>
+                  <option value="Left">Left-Handed Batter</option>
+                </select>
+              </div>
+              <div class="form-group-sm">
+                <label for="select-model-batter-col">Pitcher Hand Split</label>
+                <select id="select-model-batter-col" class="model-select-sm">
+                  <option value="Right">Right-Handed Pitcher</option>
+                  <option value="Left">Left-Handed Pitcher</option>
+                </select>
+              </div>
+              <div class="form-group-sm">
+                <label for="input-model-sims">Simulations</label>
+                <input type="number" id="input-model-sims" class="model-input-sm" value="5000" min="500" max="10000" step="500">
+              </div>
+            </div>
+          </details>
+
+          <!-- Run Button -->
+          <div class="model-actions-row">
+            <button id="btn-run-model" class="btn btn-run-model" type="button">
+              <span class="btn-icon">⚡</span>
+              <span id="btn-run-model-text">Generate Model Analysis</span>
+            </button>
+            <span id="model-running-status" class="model-running-status" style="display: none;">
+              <span class="spinner-sm"></span> Running 5,000 simulations...
+            </span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Outputs & Visualizations Section -->
+      <section id="model-results-container" class="model-results-container">
+        <!-- Results placeholder state before run -->
+        <div id="model-empty-state" class="model-empty-state">
+          <div class="empty-icon">📈</div>
+          <h4>No Model Analysis Generated Yet</h4>
+          <p>Click "Generate Model Analysis" above to evaluate this matchup with 5,000 Monte Carlo simulations.</p>
+        </div>
+
+        <!-- Populated Results Content -->
+        <div id="model-content-state" class="model-content-state" style="display: none;">
+          <!-- 1. Recommendation Banner -->
+          <div id="model-recommendation-banner" class="model-recommendation-banner">
+            <div class="recommendation-header">
+              <span class="rec-icon">🎯</span>
+              <div class="rec-text-wrap">
+                <h3 id="rec-headline" class="rec-headline">BET UNDER 95.5 mph at -110</h3>
+                <p id="rec-sub" class="rec-sub">Projected win chance exceeds sportsbook break-even threshold</p>
+              </div>
+              <span id="rec-rating-badge" class="rec-rating-badge strong">STRONG</span>
+            </div>
+          </div>
+
+          <!-- 2. OVER vs UNDER Comparison Cards -->
+          <div class="sides-comparison-grid">
+            <!-- UNDER Card -->
+            <div id="card-side-under" class="side-card">
+              <div class="side-card-header">
+                <h4>UNDER <span id="val-under-line">95.5</span> mph</h4>
+                <span id="val-under-odds" class="side-odds">-110</span>
+              </div>
+              <div class="side-meter-wrap">
+                <div class="meter-labels">
+                  <span>Win Chance: <strong id="val-under-win">61.9%</strong></span>
+                  <span class="be-label">Break-Even: <span id="val-under-be">52.4%</span></span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div id="meter-under-bar" class="progress-bar-fill" style="width: 61.9%;"></div>
+                </div>
+              </div>
+              <div class="side-stats-grid">
+                <div class="stat-pill">
+                  <span class="label">Edge</span>
+                  <strong id="val-under-edge" class="val-edge positive">+9.5 pts</strong>
+                </div>
+                <div class="stat-pill">
+                  <span class="label">Certainty</span>
+                  <strong id="val-under-sure">96% of sims</strong>
+                </div>
+                <div class="stat-pill">
+                  <span class="label">Avg Return</span>
+                  <strong id="val-under-avg">+$18.08 / bet</strong>
+                </div>
+                <div class="stat-pill">
+                  <span class="label">Suggested Bet</span>
+                  <strong id="val-under-kelly">$49.73 (Kelly)</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- OVER Card -->
+            <div id="card-side-over" class="side-card">
+              <div class="side-card-header">
+                <h4>OVER <span id="val-over-line">95.5</span> mph</h4>
+                <span id="val-over-odds" class="side-odds">-110</span>
+              </div>
+              <div class="side-meter-wrap">
+                <div class="meter-labels">
+                  <span>Win Chance: <strong id="val-over-win">38.1%</strong></span>
+                  <span class="be-label">Break-Even: <span id="val-over-be">52.4%</span></span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div id="meter-over-bar" class="progress-bar-fill" style="width: 38.1%;"></div>
+                </div>
+              </div>
+              <div class="side-stats-grid">
+                <div class="stat-pill">
+                  <span class="label">Edge</span>
+                  <strong id="val-over-edge" class="val-edge negative">-14.2 pts</strong>
+                </div>
+                <div class="stat-pill">
+                  <span class="label">Certainty</span>
+                  <strong id="val-over-sure">1% of sims</strong>
+                </div>
+                <div class="stat-pill">
+                  <span class="label">Avg Return</span>
+                  <strong id="val-over-avg">-$27.17 / bet</strong>
+                </div>
+                <div class="stat-pill">
+                  <span class="label">Suggested Bet</span>
+                  <strong id="val-over-kelly">None (No edge)</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Velocity Distribution Graph -->
+          <div class="model-graph-section">
+            <div class="section-title-row">
+              <h4>📊 Pitch Velocity Distribution Curves</h4>
+              <a id="btn-graph-expand" class="btn-graph-expand" href="#" target="_blank" title="View full image in new tab">🔍 Expand Graph</a>
+            </div>
+            <div class="graph-wrapper">
+              <img id="model-plot-img" class="model-plot-img" src="" alt="Three-Source Pitch Velocity Distribution Graph">
+            </div>
+          </div>
+
+          <!-- 4. Key Factors & Why Drivers -->
+          <div class="model-why-section">
+            <h4>💡 Key Model Drivers & Insights</h4>
+            <ul id="model-why-list" class="why-list">
+              <!-- Dynamically populated drivers -->
+            </ul>
+            <div id="model-cautions-box" class="cautions-box">
+              <span class="caution-icon">⚠️</span>
+              <p id="model-cautions-text"></p>
+            </div>
+          </div>
+
+          <!-- 5. Pitch Type Breakdown Table -->
+          <div class="model-details-table-section">
+            <div class="section-title-row">
+              <h4>📋 Pitch Arsenal Breakdown</h4>
+              <span id="model-pitch-count-badge" class="pitch-count-badge">0 types</span>
+            </div>
+            <div class="table-wrapper">
+              <table class="model-pitch-table">
+                <thead>
+                  <tr>
+                    <th>Pitch Type</th>
+                    <th>Arsenal %</th>
+                    <th>Batter %</th>
+                    <th>Matchup %</th>
+                    <th>Model Used %</th>
+                    <th>Arsenal mph</th>
+                    <th>Matchup mph</th>
+                    <th>Model mph</th>
+                    <th>P(> Line)</th>
+                  </tr>
+                </thead>
+                <tbody id="model-pitch-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-footer">
+      <button id="model-footer-close-btn" class="btn btn-secondary" type="button">
+        Close (Esc)
+      </button>
+    </div>
+  </dialog>
+
   <!-- Modular Scripts -->
-  <script type="module" src="/static/js/app.js?v=2"></script>
+  <script type="module" src="/static/js/app.js?v=4"></script>
 </body>
 </html>

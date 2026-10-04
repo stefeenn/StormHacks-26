@@ -11,6 +11,7 @@ from scraper.config import (
     normalize_pitcher_hand,
 )
 from scraper.player_search import PlayerInfo, PlayerSearchService
+from scraper.odds_provider import BaseOddsProvider, ManualConsoleOddsProvider
 
 logger = logging.getLogger(__name__)
 
@@ -372,3 +373,77 @@ class ConsoleInputHandler:
             return self.collect_batter_search_inputs()
         else:
             return self.collect_pitcher_search_inputs()
+
+    def prompt_confirm_sample_bet(self) -> bool:
+        """Prompt user whether they want to run the Three-Source Model / sample a bet."""
+        self.print_fn("\n" + "=" * 60)
+        self.print_fn("🎯 Three-Source Velocity Model (Bet Evaluator)")
+        self.print_fn("=" * 60)
+        while True:
+            raw = self.input_fn(
+                "Would you like to sample a bet and run the Three-Source Model? (y/n) [default: y]: "
+            ).strip().lower()
+            if not raw or raw in ["y", "yes"]:
+                return True
+            elif raw in ["n", "no"]:
+                return False
+            else:
+                self.print_fn("❌ Please enter 'y' to run the model or 'n' to exit.")
+
+    def prompt_betting_velocity(self, default: float = 95.5) -> float:
+        """Prompt user for betting velocity line in mph."""
+        while True:
+            raw = self.input_fn(
+                f"Enter betting velocity line in mph (e.g. 95.5) [default: {default}]: "
+            ).strip()
+            if not raw:
+                return float(default)
+            try:
+                val = float(raw)
+                if val <= 0 or val > 125:
+                    self.print_fn(
+                        "❌ Error: Betting velocity must be a positive number (typically between 50 and 110 mph)."
+                    )
+                    continue
+                return val
+            except ValueError:
+                self.print_fn("❌ Error: Please enter a valid numerical velocity (e.g. 95.5).")
+
+    def collect_betting_inputs(
+        self,
+        pitcher_name: str,
+        batter_name: str,
+        odds_provider: Optional[BaseOddsProvider] = None,
+        default_velocity: float = 95.5,
+    ) -> Optional[Dict[str, Any]]:
+        """Coordinate prompting for bet evaluation confirmation, velocity line, and odds.
+
+        Args:
+            pitcher_name: Name of the pitcher.
+            batter_name: Name of the batter.
+            odds_provider: Optional odds provider instance. Defaults to ManualConsoleOddsProvider.
+            default_velocity: Default betting velocity threshold.
+
+        Returns:
+            Dictionary with bet_line, under_odds, over_odds, or None if user declined to run.
+        """
+        if not self.prompt_confirm_sample_bet():
+            return None
+
+        provider = odds_provider or ManualConsoleOddsProvider(
+            input_fn=self.input_fn,
+            print_fn=self.print_fn,
+        )
+
+        bet_line = self.prompt_betting_velocity(default=default_velocity)
+        under_odds, over_odds = provider.get_odds(
+            pitcher_name=pitcher_name,
+            batter_name=batter_name,
+            bet_line=bet_line,
+        )
+
+        return {
+            "bet_line": bet_line,
+            "under_odds": under_odds,
+            "over_odds": over_odds,
+        }

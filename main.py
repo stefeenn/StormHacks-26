@@ -141,6 +141,34 @@ def parse_args():
         help="Do not automatically open default web browser when launching web interface",
     )
     parser.add_argument(
+        "--bet-line",
+        type=float,
+        default=None,
+        help="Sportsbook betting line velocity threshold in mph (e.g. 95.5)",
+    )
+    parser.add_argument(
+        "--under-odds",
+        type=int,
+        default=None,
+        help="Sample bet American odds for under (e.g. -110)",
+    )
+    parser.add_argument(
+        "--over-odds",
+        type=int,
+        default=None,
+        help="Sample bet American odds for over (e.g. -110)",
+    )
+    parser.add_argument(
+        "--run-model",
+        action="store_true",
+        help="Automatically run Three-Source Model bet evaluation after scrape",
+    )
+    parser.add_argument(
+        "--no-model",
+        action="store_true",
+        help="Skip prompting and do not run Three-Source Model after scrape",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -191,6 +219,58 @@ def display_csv_preview(csv_path: Path):
         )
     print("=" * sep_len)
     print(f"Total rows exported: {len(rows)}\n")
+
+
+def handle_post_matchup_betting(
+    args,
+    pitcher: str,
+    batter: str,
+    is_interactive: bool = False,
+    input_handler: Optional[ConsoleInputHandler] = None,
+):
+    """Prompt user or execute Three-Source Model bet evaluation after head-to-head scrape."""
+    if getattr(args, "no_model", False) is True:
+        return
+
+    # Check if CLI directly supplied a betting line
+    cli_bet_line = getattr(args, "bet_line", None)
+    if isinstance(cli_bet_line, (int, float)):
+        bet_line = float(cli_bet_line)
+        raw_under = getattr(args, "under_odds", None)
+        under_odds = int(raw_under) if isinstance(raw_under, (int, float)) else -110
+        raw_over = getattr(args, "over_odds", None)
+        over_odds = int(raw_over) if isinstance(raw_over, (int, float)) else -110
+        print(
+            f"\n🎲 Running Three-Source Model for {pitcher} vs {batter} "
+            f"(Line: {bet_line} mph, Under: {under_odds}, Over: {over_odds})...\n"
+        )
+        from dataModel.threeSourceModel import evaluate_and_report
+        evaluate_and_report(bet_line=bet_line, under_odds=under_odds, over_odds=over_odds)
+        return
+
+    # Check whether we should prompt interactively
+    is_tty = hasattr(sys.stdin, "isatty") and sys.stdin.isatty()
+    should_prompt = is_interactive or is_tty or (getattr(args, "run_model", False) is True)
+
+    if not should_prompt:
+        return
+
+    handler = input_handler or ConsoleInputHandler()
+    betting_inputs = handler.collect_betting_inputs(pitcher_name=pitcher, batter_name=batter)
+    if betting_inputs is None:
+        print("\n👋 Exiting without running betting model.")
+        return
+
+    print(
+        f"\n🎲 Running Three-Source Model for {pitcher} vs {batter} "
+        f"(Line: {betting_inputs['bet_line']} mph, Under: {betting_inputs['under_odds']}, Over: {betting_inputs['over_odds']})...\n"
+    )
+    from dataModel.threeSourceModel import evaluate_and_report
+    evaluate_and_report(
+        bet_line=betting_inputs["bet_line"],
+        under_odds=betting_inputs["under_odds"],
+        over_odds=betting_inputs["over_odds"],
+    )
 
 
 def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = None):
@@ -268,6 +348,16 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
             for file_path, label in zip(matchup_res["files_in_order"], labels):
                 print(f"\n✅ Scrape succeeded ({label})! Saved to: {file_path}")
                 display_csv_preview(file_path)
+
+            if matchup_res.get("data_model_sync", {}).get("success"):
+                print("🔄 Synced latest run to dataModel/ (inputPitcher.csv, inputBatter.csv, inputH2H.csv)")
+
+            handle_post_matchup_betting(
+                args=args,
+                pitcher=pitcher,
+                batter=batter,
+                is_interactive=(getattr(args, "interactive", False) is True or (getattr(args, "pitcher", None) is None and getattr(args, "batter", None) is None)),
+            )
         except Exception as e:
             logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
             sys.exit(1)
@@ -364,6 +454,16 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
             for file_path, label in zip(matchup_res["files_in_order"], labels):
                 print(f"\n✅ Scrape succeeded ({label})! Saved to: {file_path}")
                 display_csv_preview(file_path)
+
+            if matchup_res.get("data_model_sync", {}).get("success"):
+                print("🔄 Synced latest run to dataModel/ (inputPitcher.csv, inputBatter.csv, inputH2H.csv)")
+
+            handle_post_matchup_betting(
+                args=args,
+                pitcher=pitcher,
+                batter=batter,
+                is_interactive=(getattr(args, "interactive", False) is True or (getattr(args, "pitcher", None) is None and getattr(args, "batter", None) is None)),
+            )
         except Exception as e:
             logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
             sys.exit(1)

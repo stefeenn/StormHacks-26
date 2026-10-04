@@ -10,6 +10,7 @@ scraper/__init__.py
 scraper/client.py
 scraper/config.py
 scraper/console.py
+scraper/data_model_sync.py
 scraper/models.py
 scraper/pipeline.py
 scraper/pitch_analyzer.py
@@ -24,6 +25,7 @@ scraper/parsers/__init__.py
 scraper/parsers/base.py
 scraper/parsers/team_page.py
 tests/test_clear_output.py
+tests/test_cli_matchup.py
 tests/test_config.py
 tests/test_console.py
 tests/test_exporter.py
@@ -33,3 +35,9 @@ tests/test_pipeline.py
 tests/test_pitch_analyzer.py
 tests/test_pitch_pipeline.py
 tests/test_player_search.py
+tests/test_web_api.py
+web/__init__.py
+web/app.py
+web/routes/__init__.py
+web/routes/api.py
+web/routes/views.py

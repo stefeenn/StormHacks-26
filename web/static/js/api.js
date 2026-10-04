@@ -68,6 +68,68 @@ export const api = {
   },
 
   /**
+   * Fetch current data model synchronization status and last run metadata.
+   * @returns {Promise<Object>}
+   */
+  async getModelStatus() {
+    const res = await fetch("/api/model/status");
+    if (!res.ok) {
+      throw new Error(`Failed to fetch model status: ${res.statusText}`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Run three-source velocity data model bet evaluation.
+   * @param {Object} payload
+   * @returns {Promise<Object>}
+   */
+  async runDataModel(payload) {
+    const res = await fetch("/api/model/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || `Model execution failed: ${res.statusText}`);
+    }
+    return data;
+  },
+
+  /**
+   * Fetch list of available matchup data samples for model evaluation.
+   * @returns {Promise<Array>}
+   */
+  async getModelSamples() {
+    const res = await fetch("/api/model/samples");
+    if (!res.ok) {
+      throw new Error(`Failed to load model samples: ${res.statusText}`);
+    }
+    const data = await res.json();
+    return data.samples || [];
+  },
+
+  /**
+   * Load and sync a specific matchup sample into dataModel.
+   * @param {string} filename
+   * @param {Object} [options]
+   * @returns {Promise<Object>}
+   */
+  async loadModelSample(filename, options = {}) {
+    const res = await fetch("/api/model/load-sample", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, ...options }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || `Failed to load sample: ${res.statusText}`);
+    }
+    return data;
+  },
+
+  /**
    * Clear all outputs in the output folder.
    * @returns {Promise<Object>}
    */

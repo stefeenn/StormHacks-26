@@ -6,6 +6,7 @@ from typing import List, Optional, Union
 
 from scraper.client import BaseballSavantClient
 from scraper.config import DEFAULT_SEASON, normalize_count, resolve_team_id
+from scraper.data_model_sync import DataModelSync
 from scraper.extractors.registry import FieldSelector
 from scraper.exporters.csv_exporter import CsvExporter
 from scraper.models import ScrapedDataset
@@ -25,11 +26,13 @@ class ScraperPipeline:
         parser: Optional[TeamPageParser] = None,
         pitch_analyzer: Optional[PitchAnalyzer] = None,
         player_search: Optional[PlayerSearchService] = None,
+        data_model_sync: Optional[DataModelSync] = None,
     ):
         self.client = client or BaseballSavantClient()
         self.parser = parser or TeamPageParser()
         self.pitch_analyzer = pitch_analyzer or PitchAnalyzer()
         self.player_search = player_search or PlayerSearchService()
+        self.data_model_sync = data_model_sync
 
     def scrape_team(
         self,
@@ -298,6 +301,8 @@ class ScraperPipeline:
         season: int = DEFAULT_SEASON,
         count: Optional[str] = None,
         output_path: Optional[Union[str, Path]] = None,
+        sync_data_model: bool = True,
+        data_model_dir: Optional[Union[str, Path]] = None,
     ) -> dict:
         """Fetch three sets of Statcast data for a head-to-head matchup:
         1. First player mentioned's individual statistics
@@ -313,10 +318,12 @@ class ScraperPipeline:
             season: MLB season year (defaults to DEFAULT_SEASON).
             count: Optional ball-strike count filter ('0-0', '2-1', etc.).
             output_path: Optional custom output path for the head-to-head CSV.
+            sync_data_model: Whether to copy outputs into dataModel/ (default True).
+            data_model_dir: Optional custom path to dataModel directory.
             
         Returns:
-            Dictionary containing metadata, player dicts, matchup dict, and files_in_order list:
-            [player1_file, player2_file, h2h_file].
+            Dictionary containing metadata, player dicts, matchup dict, files_in_order list:
+            [player1_file, player2_file, h2h_file], and data_model_sync status.
         """
         # Resolve names for labeling
         if isinstance(pitcher, int) or (isinstance(pitcher, str) and str(pitcher).isdigit()):
@@ -364,7 +371,7 @@ class ScraperPipeline:
                 count=norm_count,
                 output_path=output_path,
             )
-            return {
+            result = {
                 "mode": "batter",
                 "player1": {
                     "name": batter_name,
@@ -418,7 +425,7 @@ class ScraperPipeline:
                 count=norm_count,
                 output_path=output_path,
             )
-            return {
+            result = {
                 "mode": "pitcher",
                 "player1": {
                     "name": pitcher_name,
@@ -442,4 +449,19 @@ class ScraperPipeline:
                 "season": season,
                 "count": norm_count,
             }
+
+        if sync_data_model:
+            syncer = self.data_model_sync or DataModelSync(data_model_dir=data_model_dir)
+            try:
+                sync_res = syncer.sync_matchup(
+                    matchup_result=result,
+                    pitcher_hand=pitcher_hand,
+                    batter_stance=batter_stance,
+                )
+                result["data_model_sync"] = sync_res
+            except Exception as e:
+                logger.warning(f"Failed to sync files to dataModel: {e}", exc_info=True)
+                result["data_model_sync"] = {"success": False, "error": str(e)}
+
+        return result
 

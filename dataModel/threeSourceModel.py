@@ -182,8 +182,37 @@ SETTINGS = ["arsenal_csv", "arsenal_column", "batter_csv", "batter_column", "mat
             "min_edge", "strong_min_sure", "strong_min_win"]
 
 K = len(names)
-MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
-ALIASES = {"splitter": 8, "4seam": 1, "fourseam": 1}
+MODEL_DIR = os.environ.get("DATA_MODEL_DIR") or os.path.dirname(os.path.abspath(__file__))
+
+
+def set_model_dir(path):
+    """Set the directory where threeSourceModel looks for inputs and writes outputs."""
+    global MODEL_DIR
+    MODEL_DIR = str(path)
+ALIASES = {
+    "splitter": 8,
+    "4seam": 1,
+    "fourseam": 1,
+    "forkball": 8,
+    "slowcurve": 7,
+    "knucklecurve": 10,
+}
+
+# If run_meta.json exists in the model directory, adopt its recommended settings as defaults
+_meta_path = os.path.join(MODEL_DIR, "run_meta.json")
+if os.path.exists(_meta_path):
+    try:
+        with open(_meta_path, "r", encoding="utf-8") as _mf:
+            _meta = json.load(_mf)
+        _recs = _meta.get("recommended_model_settings", {})
+        if _recs.get("arsenal_column"):
+            arsenal_column = _recs["arsenal_column"]
+        if _recs.get("batter_column"):
+            batter_column = _recs["batter_column"]
+        if _meta.get("matchup", {}).get("has_data") is False:
+            matchup_csv = ""
+    except Exception:
+        pass
 
 
 # ----- helper functions -----
@@ -205,14 +234,14 @@ def num(s):
         return np.nan
 
 def type_index(name, label):
-    """0-based index into names for a CSV pitch name."""
+    """0-based index into names for a CSV pitch name, or None if unmodeled."""
     k = key_of(name)
     keys = [key_of(x) for x in names]
     if k in keys:
         return keys.index(k)
     if k in ALIASES:
         return ALIASES[k] - 1
-    raise ValueError(f'{label}: pitch type "{name}" is not one of the {K} types.')
+    return None
 
 def read_source(path, column, label):
     """Return (percent vector, velocity vector, column used) from a Savant-style CSV."""
@@ -241,6 +270,8 @@ def read_source(path, column, label):
         if np.isnan(pc) or pc <= 0:
             continue
         i = type_index(row[type_col], label)
+        if i is None:
+            continue
         if pct[i] > 0:
             raise ValueError(f"{label}: {names[i]} appears twice.")
         pct[i] = pc
@@ -322,12 +353,19 @@ def run_model(**overrides):
     c.update(overrides)
 
     # ----- read the files -----
+    warnings = []
     srcs = {}
     for key, path, col, label in [("A", c["arsenal_csv"], c["arsenal_column"], "Arsenal (A)"),
                                   ("B", c["batter_csv"], c["batter_column"], "Batter faced (B)"),
                                   ("C", c["matchup_csv"], "", "Matchup (C)")]:
         if path:
-            srcs[key] = read_source(in_model_dir(path), col, label)
+            try:
+                srcs[key] = read_source(in_model_dir(path), col, label)
+            except ValueError as e:
+                if key == "C" and "no usable percentages" in str(e):
+                    warnings.append("Matchup data has 0 pitches; falling back to season arsenal and batter history.")
+                else:
+                    raise
     hasA, hasB, hasC = "A" in srcs, "B" in srcs, "C" in srcs
     if not (hasA or hasC):
         raise ValueError("Need arsenal_csv or matchup_csv -- they are the only speed sources.")
@@ -343,7 +381,6 @@ def run_model(**overrides):
     T = np.where((pctA > 0) | (pctC > 0))[0]
     nm = [names[i] for i in T]
     A_ = len(T)
-    warnings = []
     if hasA and hasC:
         extra = [names[i] for i in T if pctA[i] == 0]
         if extra:
@@ -696,46 +733,109 @@ def print_details(r):
           f"{100*r['line']['book_no_vig_p_over']:.1f}%")
 
 
-def plot_result(r):
-    import matplotlib.pyplot as plt
-    pl, L = r["plot"], r["line"]["bet_line"]
-    v = pl["x_mph"]
-    colors = plt.cm.tab10(np.linspace(0, 1, 10))
-    plt.figure(figsize=(9, 5.5), facecolor="w")
-    for j, (name, y) in enumerate(pl["by_type"].items()):
-        c = colors[j % 10]
-        plt.plot(v, y, color=0.5 * c[:3] + 0.5, linewidth=1, label=name + " (assumed SD)")
-    plt.plot(v, pl["combined"], "k-", linewidth=2.5, label="Combined model")
-    if "season_only" in pl:
-        plt.plot(v, pl["season_only"], "b--", linewidth=1.5, label="Season data only")
-    if "matchup_only" in pl:
-        plt.plot(v, pl["matchup_only"], ":", color="orange", linewidth=2, label="Matchup only")
-    plt.fill_between(v, pl["combined"], where=(v >= L), color="green", alpha=0.15,
-                     label=f"OVER {L:g} region")
-    plt.axvline(L, color="green", linewidth=1.5, label=f"Bet line {L:g} mph")
-    plt.xlabel("Velocity (mph)")
-    plt.ylabel("Probability density")
-    a = r["answer"]
-    ans = f"BET {a['side']} [{a['level']}]" if a["bet"] else "NO BET"
-    plt.title(f"Answer: {ans}  --  P(over {L:g}) = {100*r['p_over']:.1f}%")
-    plt.legend(loc="upper left", fontsize=8)
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+def plot_result(r, save_only=False, output_plot_path=None):
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("\nNote: matplotlib is not installed. Plotting skipped.")
+        return
+
+    try:
+        import matplotlib
+        is_headless = save_only or not os.environ.get("DISPLAY") or matplotlib.get_backend().lower() in ("agg", "cairo")
+        if is_headless and matplotlib.get_backend().lower() not in ("agg", "cairo"):
+            matplotlib.use("Agg")
+
+        pl, L = r["plot"], r["line"]["bet_line"]
+        v = pl["x_mph"]
+        colors = plt.cm.tab10(np.linspace(0, 1, 10))
+        plt.figure(figsize=(9, 5.5), facecolor="w")
+        for j, (name, y) in enumerate(pl["by_type"].items()):
+            c = colors[j % 10]
+            plt.plot(v, y, color=0.5 * c[:3] + 0.5, linewidth=1, label=name + " (assumed SD)")
+        plt.plot(v, pl["combined"], "k-", linewidth=2.5, label="Combined model")
+        if "season_only" in pl:
+            plt.plot(v, pl["season_only"], "b--", linewidth=1.5, label="Season data only")
+        if "matchup_only" in pl:
+            plt.plot(v, pl["matchup_only"], ":", color="orange", linewidth=2, label="Matchup only")
+        plt.fill_between(v, pl["combined"], where=(v >= L), color="green", alpha=0.15,
+                         label=f"OVER {L:g} region")
+        plt.axvline(L, color="green", linewidth=1.5, label=f"Bet line {L:g} mph")
+        plt.xlabel("Velocity (mph)")
+        plt.ylabel("Probability density")
+        a = r["answer"]
+        ans = f"BET {a['side']} [{a['level']}]" if a["bet"] else "NO BET"
+        plt.title(f"Answer: {ans}  --  P(over {L:g}) = {100*r['p_over']:.1f}%")
+        plt.legend(loc="upper left", fontsize=8)
+        plt.grid(True)
+        plt.tight_layout()
+
+        if is_headless:
+            plot_path = output_plot_path or in_model_dir("model_plot.png")
+            plt.savefig(plot_path)
+            plt.close()
+            print(f"Plot saved to {plot_path}")
+        else:
+            plt.show()
+    except Exception as e:
+        print(f"\nNote: Plotting skipped ({e}).")
 
 
-def main():
-    r = run_model()
+def evaluate_and_report(
+    bet_line: float = 95.5,
+    under_odds: int = -110,
+    over_odds: int = -110,
+    show_details_flag: Optional[bool] = None,
+    show_plot_flag: Optional[bool] = None,
+    save_plot_only: bool = False,
+    output_plot_path: Optional[str] = None,
+    output_json_path: Optional[str] = None,
+    **overrides,
+) -> dict:
+    """Evaluate a bet line and odds using the three-source model, print report, and save outputs.
+
+    Args:
+        bet_line: Sportsbook velocity betting line in mph.
+        under_odds: American odds for under (e.g. -110).
+        over_odds: American odds for over (e.g. -110).
+        show_details_flag: Whether to print detailed pitch breakdowns.
+        show_plot_flag: Whether to show or save plot.
+        save_plot_only: Whether to save plot directly to file without displaying window.
+        output_plot_path: Custom output destination path for model plot.
+        output_json_path: Custom output destination path for model json.
+        **overrides: Any additional overrides accepted by run_model.
+
+    Returns:
+        Result dictionary containing model analysis and bet evaluations.
+    """
+    disp_details = show_details if show_details_flag is None else show_details_flag
+    disp_plot = show_plot if show_plot_flag is None else show_plot_flag
+
+    r = run_model(
+        bet_line=bet_line,
+        under_odds=under_odds,
+        over_odds=over_odds,
+        **overrides,
+    )
     print_report(r)
-    if show_details:
+    if disp_details:
         print_details(r)
     if output_json:
-        out = in_model_dir(output_json)
+        out = output_json_path or in_model_dir(output_json)
         with open(out, "w") as fh:
             json.dump(to_json(r), fh, indent=2)
         print(f"\nAll results saved to {out}")
-    if show_plot:
-        plot_result(r)
+    if disp_plot:
+        plot_result(r, save_only=save_plot_only, output_plot_path=output_plot_path)
+    return r
+
+
+def main():
+    evaluate_and_report(
+        bet_line=bet_line,
+        under_odds=under_odds,
+        over_odds=over_odds,
+    )
 
 
 if __name__ == "__main__":

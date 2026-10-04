@@ -1,0 +1,31 @@
+{
+  "synced_at": "2026-10-04T09:25:56.236702",
+  "mode": "pitcher",
+  "season": 2026,
+  "count": "0-0",
+  "pitcher": {
+    "name": "Robbie Ray",
+    "hand": "both",
+    "source_file": "robbie_ray_2026_count_0_0_pitch_arsenal.csv"
+  },
+  "batter": {
+    "name": "Christian Yelich",
+    "stance": "both",
+    "source_file": "christian_yelich_2026_count_0_0_pitches_faced.csv"
+  },
+  "matchup": {
+    "name": "Robbie Ray vs Christian Yelich [Count: 0-0] (2026)",
+    "source_file": "robbie_ray_vs_christian_yelich_2026_count_0_0.csv",
+    "has_data": true
+  },
+  "files": {
+    "inputPitcher": "inputPitcher.csv",
+    "inputBatter": "inputBatter.csv",
+    "inputH2H": "inputH2H.csv"
+  },
+  "recommended_model_settings": {
+    "arsenal_column": "Right",
+    "batter_column": "Right",
+    "has_h2h_data": true
+  }
+}
