@@ -1096,7 +1096,7 @@ def run_data_model():
     raw_line = data.get("bet_line", 95.5)
     try:
         bet_line = float(raw_line)
-        if bet_line <= 0 or bet_line > 130:
+        if bet_line < 50 or bet_line > 125:
             return jsonify({"error": "Betting velocity line must be between 50 and 125 mph."}), 400
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid numerical betting velocity line."}), 400
@@ -1178,6 +1178,9 @@ def run_data_model():
             "result": to_json(result),
             "plot_url": plot_url,
         })
+    except ValueError as e:
+        logger.warning(f"Validation error running data model: {e}")
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error(f"Error executing data model: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500

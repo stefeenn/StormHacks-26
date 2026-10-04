@@ -26,6 +26,8 @@ def normalize_american_odds(raw_val: str, default: int = -110) -> int:
         ) from e
     if val == 0:
         raise ValueError("American odds cannot be 0.")
+    if -100 < val < 100:
+        raise ValueError(f"American odds must be <= -100 or >= +100 (got {raw_val}).")
     return val
 
 

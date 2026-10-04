@@ -62,7 +62,7 @@ ProjV1/
 │   ├── inputH2H.csv          # Head-to-head empirical dataset
 │   ├── inputPitcher.csv      # Pitcher arsenal dataset
 │   └── inputBatter.csv       # Batter profile dataset
-├── tests/                    # 102 automated unit and integration tests
+├── tests/                    # 114 automated unit, integration, and edge-case tests
 ├── main.py                   # Unified CLI and web server launcher
 ├── requirements.txt          # Python package dependencies
 └── pyproject.toml            # Project metadata and test configuration
@@ -164,11 +164,14 @@ $$f^* = \frac{b \cdot p - q}{b}$$
 
 Where $b$ represents decimal odds $- 1$, $p$ is fair win probability, and $q = 1 - p$.
 
+### 📈 Empirical Validation & Live Game Testing
+To evaluate real-world performance, we analyzed two live MLB games and benchmarked live sports betting lines against our model's predictions. This empirical test verified that our three-source model consistently identified positive expected value (+EV) opportunities and delivered a measurable edge and greater profitability compared to live market baselines.
+
 ---
 
 ## 🧪 Testing
 
-The test suite contains **102 tests** covering the web API, scraping pipeline, player search, console CLI, parser, data synchronization, and mathematical betting logic.
+The test suite contains **114 tests** covering the web API, scraping pipeline, player search, console CLI, parser, data synchronization, edge cases, and mathematical betting logic.
 
 Run the full test suite:
 ```bash
