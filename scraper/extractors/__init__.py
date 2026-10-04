@@ -7,3 +7,4 @@ from scraper.extractors.registry import (
 )
 
 __all__ = ["FieldSelector", "METRIC_SPECS", "format_batting_average"]
+

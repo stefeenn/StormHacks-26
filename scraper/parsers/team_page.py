@@ -206,3 +206,4 @@ class TeamPageParser(BaseParser):
                 return clean_str
 
         return clean_str
+

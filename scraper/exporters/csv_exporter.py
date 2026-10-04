@@ -91,3 +91,4 @@ class CsvExporter(BaseExporter):
 
         logger.info(f"Successfully exported {len(records)} rows to {output_path}")
         return output_path
+

@@ -52,3 +52,4 @@ def test_scraped_dataset_filter():
     assert len(roster) == 1
     assert roster[0].name == "One Player"
     assert len(dataset.records) == 2
+

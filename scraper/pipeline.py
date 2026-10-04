@@ -100,3 +100,4 @@ class ScraperPipeline:
         out_file = exporter.export(dataset, destination=output_path)
         logger.info(f"Scrape pipeline complete! Saved to: {out_file}")
         return out_file
+

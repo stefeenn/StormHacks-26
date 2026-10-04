@@ -20,3 +20,4 @@ class BaseParser(ABC):
             Structured ScrapedDataset instance.
         """
         pass
+

@@ -187,3 +187,4 @@ def resolve_team_id(team_identifier: Union[str, int]) -> int:
         f"Unknown team identifier '{team_identifier}'. "
         f"Available teams: {', '.join(sorted(set(k for k in MLB_TEAM_IDS if len(k) <= 3)))}"
     )
+

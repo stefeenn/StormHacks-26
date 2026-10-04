@@ -32,3 +32,4 @@ def test_pipeline_mocked_run(tmp_path):
     # Freeman (.288) > Ohtani (.275)
     assert rows[1] == ["Freddie Freeman", ".288"]
     assert rows[2] == ["Shohei Ohtani", ".275"]
+

@@ -90,3 +90,4 @@ def test_team_page_parser_missing_table():
     parser = TeamPageParser()
     with pytest.raises(ValueError, match="Could not find statistical table"):
         parser.parse("<html><body><div>No tables</div></body></html>", category="hitting")
+

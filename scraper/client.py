@@ -99,3 +99,4 @@ class BaseballSavantClient:
             cache_file.write_text(html, encoding="utf-8")
 
         return html
+

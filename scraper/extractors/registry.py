@@ -200,3 +200,4 @@ class FieldSelector:
             return float(str(val).replace(",", ""))
         except ValueError:
             return str(val)
+
