@@ -10,6 +10,8 @@ from scraper.extractors.registry import FieldSelector
 from scraper.exporters.csv_exporter import CsvExporter
 from scraper.models import ScrapedDataset
 from scraper.parsers.team_page import TeamPageParser
+from scraper.pitch_analyzer import PitchAnalyzer
+from scraper.player_search import PlayerSearchService
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +23,13 @@ class ScraperPipeline:
         self,
         client: Optional[BaseballSavantClient] = None,
         parser: Optional[TeamPageParser] = None,
+        pitch_analyzer: Optional[PitchAnalyzer] = None,
+        player_search: Optional[PlayerSearchService] = None,
     ):
         self.client = client or BaseballSavantClient()
         self.parser = parser or TeamPageParser()
+        self.pitch_analyzer = pitch_analyzer or PitchAnalyzer()
+        self.player_search = player_search or PlayerSearchService()
 
     def scrape_team(
         self,
@@ -101,3 +107,84 @@ class ScraperPipeline:
         logger.info(f"Scrape pipeline complete! Saved to: {out_file}")
         return out_file
 
+    def scrape_pitcher_arsenal_to_csv(
+        self,
+        pitcher: Union[str, int],
+        pitcher_hand: str,
+        batter: Optional[Union[str, int]] = None,
+        batter_stance: str = "both",
+        season: int = DEFAULT_SEASON,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> Path:
+        """Fetch pitcher Statcast data, compute velocities and occurrence percentages, and export to CSV.
+        
+        Args:
+            pitcher: Pitcher name (e.g. 'Tarik Skubal') or MLB ID.
+            pitcher_hand: Pitcher throwing hand ('L', 'R', or 'both').
+            batter: Optional batter name (e.g. 'Matt Olson') or MLB ID.
+            batter_stance: Batter stance ('left', 'right', or 'both').
+            season: MLB season year (defaults to 2026).
+            output_path: Optional destination CSV path.
+            
+        Returns:
+            Path of the exported CSV file.
+        """
+        # Resolve Pitcher
+        if isinstance(pitcher, int) or (isinstance(pitcher, str) and str(pitcher).isdigit()):
+            pitcher_id = int(pitcher)
+            p_info = self.player_search.find_pitcher(pitcher_id)
+            pitcher_name = p_info.full_name if p_info else f"Pitcher_{pitcher_id}"
+        else:
+            p_info = self.player_search.find_pitcher(pitcher)
+            if not p_info:
+                raise ValueError(f"Could not find pitcher matching '{pitcher}'.")
+            pitcher_id = p_info.player_id
+            pitcher_name = p_info.full_name
+
+        # Resolve Batter (if provided)
+        batter_id = None
+        batter_name = None
+        if batter:
+            if isinstance(batter, int) or (isinstance(batter, str) and str(batter).isdigit()):
+                batter_id = int(batter)
+                b_info = self.player_search.find_batter(batter_id)
+                batter_name = b_info.full_name if b_info else f"Batter_{batter_id}"
+            else:
+                b_info = self.player_search.find_batter(batter)
+                if not b_info:
+                    raise ValueError(f"Could not find batter matching '{batter}'.")
+                batter_id = b_info.player_id
+                batter_name = b_info.full_name
+
+        logger.info(
+            f"Querying Statcast for {pitcher_name} (Throws: {pitcher_hand})"
+            + (f" vs {batter_name} (Stance: {batter_stance})" if batter_name else f" (Stance: {batter_stance})")
+            + f" in season {season}..."
+        )
+
+        csv_text = self.client.fetch_statcast_pitches(
+            pitcher_id=pitcher_id,
+            batter_id=batter_id,
+            season=season,
+        )
+
+        result_df = self.pitch_analyzer.analyze(
+            raw_data=csv_text,
+            pitcher_hand=pitcher_hand,
+            batter_stance=batter_stance,
+        )
+
+        if not output_path:
+            p_slug = pitcher_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
+            if batter_name:
+                b_slug = batter_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
+                dest = Path(f"output/{p_slug}_vs_{b_slug}_{season}.csv")
+            else:
+                dest = Path(f"output/{p_slug}_{season}_pitch_arsenal.csv")
+        else:
+            dest = Path(output_path)
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        result_df.to_csv(dest, index=False)
+        logger.info(f"Successfully exported {len(result_df)} pitch types to {dest}")
+        return dest

@@ -188,3 +188,46 @@ def resolve_team_id(team_identifier: Union[str, int]) -> int:
         f"Available teams: {', '.join(sorted(set(k for k in MLB_TEAM_IDS if len(k) <= 3)))}"
     )
 
+
+# Valid inputs for pitcher throwing hand and batter stance
+VALID_PITCHER_HANDS = {"L", "R", "BOTH"}
+VALID_BATTER_STANCES = {"LEFT", "RIGHT", "BOTH"}
+
+PITCHER_HAND_ALIASES: Dict[str, str] = {
+    "l": "L",
+    "left": "L",
+    "r": "R",
+    "right": "R",
+    "both": "both",
+    "b": "both",
+    "switch": "both",
+    "s": "both",
+}
+
+BATTER_STANCE_ALIASES: Dict[str, str] = {
+    "l": "left",
+    "left": "left",
+    "r": "right",
+    "right": "right",
+    "both": "both",
+    "b": "both",
+    "switch": "both",
+    "s": "both",
+}
+
+
+def normalize_pitcher_hand(hand_str: Optional[str]) -> Optional[str]:
+    """Normalize input into 'L', 'R', or 'both'. Returns None if invalid."""
+    if not hand_str:
+        return None
+    cleaned = hand_str.strip().lower()
+    return PITCHER_HAND_ALIASES.get(cleaned)
+
+
+def normalize_batter_stance(stance_str: Optional[str]) -> Optional[str]:
+    """Normalize input into 'left', 'right', or 'both'. Returns None if invalid."""
+    if not stance_str:
+        return None
+    cleaned = stance_str.strip().lower()
+    return BATTER_STANCE_ALIASES.get(cleaned)
+

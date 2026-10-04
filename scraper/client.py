@@ -100,3 +100,60 @@ class BaseballSavantClient:
 
         return html
 
+    def fetch_statcast_pitches(
+        self,
+        pitcher_id: Union[int, str],
+        batter_id: Optional[Union[int, str]] = None,
+        season: int = DEFAULT_SEASON,
+        pitcher_throws: Optional[str] = None,
+        stand: Optional[str] = None,
+    ) -> str:
+        """Fetch Statcast pitch-by-pitch CSV data from Baseball Savant.
+        
+        Args:
+            pitcher_id: MLB ID of the pitcher.
+            batter_id: Optional MLB ID of the batter.
+            season: Season year (defaults to 2026).
+            pitcher_throws: Optional pitcher hand ('L' or 'R').
+            stand: Optional batter stance ('L' or 'R').
+            
+        Returns:
+            Raw CSV text response from Statcast search.
+        """
+        cache_file = None
+        if self.cache_dir:
+            b_str = f"batter_{batter_id}" if batter_id else "all_batters"
+            p_hand = f"_pthrows_{pitcher_throws}" if pitcher_throws else ""
+            b_stand = f"_stand_{stand}" if stand else ""
+            cache_file = self.cache_dir / f"statcast_p{pitcher_id}_{b_str}_s{season}{p_hand}{b_stand}.csv"
+            if cache_file.exists():
+                logger.info(f"Loading cached Statcast pitch data: {cache_file}")
+                return cache_file.read_text(encoding="utf-8")
+
+        url = f"{self.base_url}/statcast_search/csv"
+        params = {
+            "all": "true",
+            "hfSea": f"{season}|",
+            "player_type": "pitcher",
+            "pitchers_lookup[]": str(pitcher_id),
+            "type": "details",
+        }
+        if batter_id is not None:
+            params["batters_lookup[]"] = str(batter_id)
+        if pitcher_throws and pitcher_throws.upper() in ["R", "L"]:
+            params["pitcher_throws"] = pitcher_throws.upper()
+        if stand and stand.upper() in ["R", "L"]:
+            params["stand"] = stand.upper()
+
+        logger.info(
+            f"Fetching Statcast pitch data for pitcher {pitcher_id}"
+            + (f" vs batter {batter_id}" if batter_id else "")
+            + f" (season {season})..."
+        )
+        csv_text = self.fetch_url(url, params=params)
+
+        if cache_file:
+            cache_file.write_text(csv_text, encoding="utf-8")
+
+        return csv_text
+
