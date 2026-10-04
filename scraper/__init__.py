@@ -9,6 +9,7 @@ from scraper.models import PlayerRecord, ScrapedDataset
 from scraper.parsers.base import BaseParser
 from scraper.parsers.team_page import TeamPageParser
 from scraper.pipeline import ScraperPipeline
+from scraper.utils import clear_output_directory
 
 __all__ = [
     "BaseballSavantClient",
@@ -21,6 +22,7 @@ __all__ = [
     "BaseExporter",
     "CsvExporter",
     "ScraperPipeline",
+    "clear_output_directory",
     "BASE_URL",
     "MLB_TEAM_IDS",
     "resolve_team_id",

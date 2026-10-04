@@ -103,6 +103,14 @@ python main.py --team NYY --season 2026 --metrics "BA,HR"
 python main.py --team 147 --season 2026
 ```
 
+### 5. Clearing the Output Folder
+Quickly purge all exported files from `output/` before a fresh run:
+```bash
+python main.py --clean
+# or
+python main.py --clear-output
+```
+
 ---
 
 ## 🧪 Running Tests

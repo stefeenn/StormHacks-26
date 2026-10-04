@@ -10,6 +10,7 @@ from typing import Optional
 from scraper.config import DEFAULT_SEASON, normalize_batter_stance, normalize_pitcher_hand
 from scraper.console import ConsoleInputHandler
 from scraper.pipeline import ScraperPipeline
+from scraper.utils import clear_output_directory
 
 logging.basicConfig(
     level=logging.INFO,
@@ -105,6 +106,12 @@ def parse_args():
         "--raw-headers",
         action="store_true",
         help="Use raw table header abbreviations instead of friendly names for team output",
+    )
+    parser.add_argument(
+        "--clear-output",
+        "--clean",
+        action="store_true",
+        help="Clear all files from the output folder and exit",
     )
     parser.add_argument(
         "--verbose",
@@ -318,6 +325,14 @@ def main():
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    if args.clear_output:
+        count = clear_output_directory("output")
+        if count == 0:
+            print("ℹ️ Output folder ('output/') is already empty.")
+        else:
+            print(f"🗑️ Successfully cleared {count} file(s) from 'output/'.")
+        return
 
     pipeline = ScraperPipeline()
 
