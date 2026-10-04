@@ -102,30 +102,36 @@ class BaseballSavantClient:
 
     def fetch_statcast_pitches(
         self,
-        pitcher_id: Union[int, str],
+        pitcher_id: Optional[Union[int, str]] = None,
         batter_id: Optional[Union[int, str]] = None,
         season: int = DEFAULT_SEASON,
         pitcher_throws: Optional[str] = None,
         stand: Optional[str] = None,
+        player_type: str = "pitcher",
     ) -> str:
         """Fetch Statcast pitch-by-pitch CSV data from Baseball Savant.
         
         Args:
-            pitcher_id: MLB ID of the pitcher.
+            pitcher_id: Optional MLB ID of the pitcher.
             batter_id: Optional MLB ID of the batter.
             season: Season year (defaults to 2026).
             pitcher_throws: Optional pitcher hand ('L' or 'R').
             stand: Optional batter stance ('L' or 'R').
+            player_type: Primary subject type ('pitcher' or 'batter').
             
         Returns:
             Raw CSV text response from Statcast search.
         """
+        if not pitcher_id and not batter_id:
+            raise ValueError("At least one of pitcher_id or batter_id must be provided.")
+
         cache_file = None
         if self.cache_dir:
+            p_str = f"pitcher_{pitcher_id}" if pitcher_id else "all_pitchers"
             b_str = f"batter_{batter_id}" if batter_id else "all_batters"
             p_hand = f"_pthrows_{pitcher_throws}" if pitcher_throws else ""
             b_stand = f"_stand_{stand}" if stand else ""
-            cache_file = self.cache_dir / f"statcast_p{pitcher_id}_{b_str}_s{season}{p_hand}{b_stand}.csv"
+            cache_file = self.cache_dir / f"statcast_{player_type}_{p_str}_{b_str}_s{season}{p_hand}{b_stand}.csv"
             if cache_file.exists():
                 logger.info(f"Loading cached Statcast pitch data: {cache_file}")
                 return cache_file.read_text(encoding="utf-8")
@@ -134,10 +140,11 @@ class BaseballSavantClient:
         params = {
             "all": "true",
             "hfSea": f"{season}|",
-            "player_type": "pitcher",
-            "pitchers_lookup[]": str(pitcher_id),
+            "player_type": player_type,
             "type": "details",
         }
+        if pitcher_id is not None:
+            params["pitchers_lookup[]"] = str(pitcher_id)
         if batter_id is not None:
             params["batters_lookup[]"] = str(batter_id)
         if pitcher_throws and pitcher_throws.upper() in ["R", "L"]:
@@ -146,7 +153,8 @@ class BaseballSavantClient:
             params["stand"] = stand.upper()
 
         logger.info(
-            f"Fetching Statcast pitch data for pitcher {pitcher_id}"
+            f"Fetching Statcast pitch data (player_type={player_type}) "
+            + (f"pitcher {pitcher_id}" if pitcher_id else "all pitchers")
             + (f" vs batter {batter_id}" if batter_id else "")
             + f" (season {season})..."
         )

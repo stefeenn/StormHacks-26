@@ -26,6 +26,14 @@ def parse_args():
     )
     # Pitcher / Batter Statcast arguments
     parser.add_argument(
+        "--mode",
+        "--search-type",
+        dest="search_mode",
+        choices=["pitcher", "batter"],
+        default=None,
+        help="Search mode: 'pitcher' or 'batter' (default prompts interactively)",
+    )
+    parser.add_argument(
         "--interactive",
         action="store_true",
         help="Force interactive console input mode for pitcher/batter queries",
@@ -147,49 +155,53 @@ def display_csv_preview(csv_path: Path):
                 for i, col in enumerate(row)
             )
         )
-
     print("=" * sep_len)
     print(f"Total rows exported: {len(rows)}\n")
 
 
-def run_pitch_scraper(args, pipeline: ScraperPipeline):
+def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = None):
     """Run Statcast pitch scraper either via interactive console or CLI arguments."""
-    is_interactive = args.interactive or (args.pitcher is None and args.team is None)
-
-    if is_interactive:
-        # Launch console entry flow
-        handler = ConsoleInputHandler(search_service=pipeline.player_search)
-        inputs = handler.collect_all_inputs()
-
+    if inputs is not None:
         pitcher = inputs["pitcher_name"]
         pitcher_hand = inputs["pitcher_hand"]
-        batter = inputs["batter_name"]
-        batter_stance = inputs["batter_stance"]
-        season = inputs["season"]
+        batter = inputs.get("batter_name")
+        batter_stance = inputs.get("batter_stance", "both")
+        season = inputs.get("season", DEFAULT_SEASON)
     else:
-        # CLI argument mode
-        pitcher = args.pitcher
-        if not pitcher:
-            print("❌ Error: Pitcher name is required via --pitcher. Exiting.")
-            sys.exit(1)
+        is_interactive = args.interactive or (args.pitcher is None and args.team is None and args.batter is None)
 
-        norm_hand = normalize_pitcher_hand(args.pitcher_hand)
-        if not norm_hand:
-            print("❌ Error: Valid pitcher throwing hand is required (--pitcher-hand 'L', 'R', or 'both').")
-            sys.exit(1)
-        pitcher_hand = norm_hand
+        if is_interactive:
+            handler = ConsoleInputHandler(search_service=pipeline.player_search)
+            inputs = handler.collect_pitcher_search_inputs()
 
-        batter = args.batter
-        if batter:
-            norm_stance = normalize_batter_stance(args.batter_stance)
-            if not norm_stance:
-                print("❌ Error: Batter stance is required when --batter is specified (--batter-stance 'left', 'right', or 'both').")
-                sys.exit(1)
-            batter_stance = norm_stance
+            pitcher = inputs["pitcher_name"]
+            pitcher_hand = inputs["pitcher_hand"]
+            batter = inputs["batter_name"]
+            batter_stance = inputs["batter_stance"]
+            season = inputs["season"]
         else:
-            batter_stance = normalize_batter_stance(args.batter_stance) or "both"
+            pitcher = args.pitcher
+            if not pitcher:
+                print("❌ Error: Pitcher name is required via --pitcher. Exiting.")
+                sys.exit(1)
 
-        season = args.season or DEFAULT_SEASON
+            norm_hand = normalize_pitcher_hand(args.pitcher_hand)
+            if not norm_hand:
+                print("❌ Error: Valid pitcher throwing hand is required (--pitcher-hand 'L', 'R', or 'both').")
+                sys.exit(1)
+            pitcher_hand = norm_hand
+
+            batter = args.batter
+            if batter:
+                norm_stance = normalize_batter_stance(args.batter_stance)
+                if not norm_stance:
+                    print("❌ Error: Batter stance is required when --batter is specified (--batter-stance 'left', 'right', or 'both').")
+                    sys.exit(1)
+                batter_stance = norm_stance
+            else:
+                batter_stance = normalize_batter_stance(args.batter_stance) or "both"
+
+            season = args.season or DEFAULT_SEASON
 
     output_path = args.output
     try:
@@ -198,6 +210,67 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline):
             pitcher_hand=pitcher_hand,
             batter=batter,
             batter_stance=batter_stance,
+            season=season,
+            output_path=output_path,
+        )
+        print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")
+        display_csv_preview(exported_file)
+    except Exception as e:
+        logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
+        sys.exit(1)
+
+
+def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = None):
+    """Run Statcast batter scraper either via interactive console or CLI arguments."""
+    if inputs is not None:
+        batter = inputs["batter_name"]
+        batter_stance = inputs["batter_stance"]
+        pitcher = inputs.get("pitcher_name")
+        pitcher_hand = inputs.get("pitcher_hand", "both")
+        season = inputs.get("season", DEFAULT_SEASON)
+    else:
+        is_interactive = args.interactive or (args.batter is None and args.pitcher is None and args.team is None)
+
+        if is_interactive:
+            handler = ConsoleInputHandler(search_service=pipeline.player_search)
+            inputs = handler.collect_batter_search_inputs()
+
+            batter = inputs["batter_name"]
+            batter_stance = inputs["batter_stance"]
+            pitcher = inputs["pitcher_name"]
+            pitcher_hand = inputs["pitcher_hand"]
+            season = inputs["season"]
+        else:
+            batter = args.batter
+            if not batter:
+                print("❌ Error: Batter name is required via --batter. Exiting.")
+                sys.exit(1)
+
+            norm_stance = normalize_batter_stance(args.batter_stance)
+            if not norm_stance:
+                print("❌ Error: Valid batter stance is required (--batter-stance 'left', 'right', or 'both').")
+                sys.exit(1)
+            batter_stance = norm_stance
+
+            pitcher = args.pitcher
+            if pitcher:
+                norm_hand = normalize_pitcher_hand(args.pitcher_hand)
+                if not norm_hand:
+                    print("❌ Error: Pitcher throwing hand is required when --pitcher is specified (--pitcher-hand 'L', 'R', or 'both').")
+                    sys.exit(1)
+                pitcher_hand = norm_hand
+            else:
+                pitcher_hand = normalize_pitcher_hand(args.pitcher_hand) or "both"
+
+            season = args.season or DEFAULT_SEASON
+
+    output_path = args.output
+    try:
+        exported_file = pipeline.scrape_batter_pitches_to_csv(
+            batter=batter,
+            batter_stance=batter_stance,
+            pitcher=pitcher,
+            pitcher_hand=pitcher_hand,
             season=season,
             output_path=output_path,
         )
@@ -250,10 +323,19 @@ def main():
 
     if args.team is not None:
         run_team_scraper(args, pipeline)
-    else:
+    elif args.search_mode == "batter" or (args.batter and not args.pitcher and not args.interactive):
+        run_batter_scraper(args, pipeline)
+    elif args.search_mode == "pitcher" or (args.pitcher and not args.batter and not args.interactive):
         run_pitch_scraper(args, pipeline)
+    else:
+        # Top-level interactive flow: prompt user to choose between Pitcher and Batter Search
+        handler = ConsoleInputHandler(search_service=pipeline.player_search)
+        inputs = handler.collect_all_inputs(search_mode=args.search_mode)
+        if inputs["search_mode"] == "batter":
+            run_batter_scraper(args, pipeline, inputs=inputs)
+        else:
+            run_pitch_scraper(args, pipeline, inputs=inputs)
 
 
 if __name__ == "__main__":
     main()
-
