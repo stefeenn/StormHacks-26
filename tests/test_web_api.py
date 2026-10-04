@@ -304,3 +304,68 @@ def test_api_download_zip_no_files(client):
     assert resp.status_code == 400
 
 
+def test_api_scrape_with_count_valid(client, mock_pipeline):
+    """Verify /api/scrape handles count parameter properly."""
+    payload = {
+        "search_mode": "pitcher",
+        "pitcher_name": "Tarik Skubal",
+        "pitcher_hand": "L",
+        "batter_stance": "left",
+        "count": "2-1",
+        "season": 2026,
+    }
+    resp = client.post("/api/scrape", json=payload)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["success"] is True
+    assert data["count"] == "2-1"
+    assert "[Count: 2-1]" in data["display_name"]
+    mock_pipeline.scrape_pitcher_arsenal_to_csv.assert_called_with(
+        pitcher="Tarik Skubal",
+        pitcher_hand="L",
+        batter=None,
+        batter_stance="left",
+        season=2026,
+        count="2-1",
+    )
+
+
+def test_api_scrape_with_count_invalid(client):
+    """Verify /api/scrape returns 400 for invalid count."""
+    payload = {
+        "search_mode": "pitcher",
+        "pitcher_name": "Tarik Skubal",
+        "count": "5-1",
+        "season": 2026,
+    }
+    resp = client.post("/api/scrape", json=payload)
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert "Invalid count" in data["error"]
+
+
+def test_api_scrape_with_count_empty(client, mock_pipeline):
+    """Verify /api/scrape with empty count defaults to overall stats."""
+    payload = {
+        "search_mode": "pitcher",
+        "pitcher_name": "Tarik Skubal",
+        "pitcher_hand": "L",
+        "count": "",
+        "season": 2026,
+    }
+    resp = client.post("/api/scrape", json=payload)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["success"] is True
+    assert data["count"] is None
+    mock_pipeline.scrape_pitcher_arsenal_to_csv.assert_called_with(
+        pitcher="Tarik Skubal",
+        pitcher_hand="L",
+        batter=None,
+        batter_stance="both",
+        season=2026,
+        count=None,
+    )
+
+
+

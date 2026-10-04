@@ -58,6 +58,7 @@ def test_pitch_scraper_head_to_head_console_order(tmp_path: Path):
             batter="Shohei Ohtani",
             batter_stance="left",
             season=2026,
+            count=None,
             output_path=None,
         )
 
@@ -113,6 +114,7 @@ def test_batter_scraper_head_to_head_console_order(tmp_path: Path):
             batter="Shohei Ohtani",
             batter_stance="left",
             season=2026,
+            count=None,
             output_path=None,
         )
 

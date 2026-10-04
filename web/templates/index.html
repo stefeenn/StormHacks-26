@@ -161,6 +161,10 @@
         </div>
         <div class="step-node" data-step="5">
           <div class="step-node-bubble">5</div>
+          <div class="step-node-title">Count (Opt.)</div>
+        </div>
+        <div class="step-node" data-step="6">
+          <div class="step-node-bubble">6</div>
           <div class="step-node-title">Season</div>
         </div>
       </div>
@@ -172,7 +176,7 @@
         <!-- Pitcher Step 1: Pitcher Name -->
         <div id="step-view-pitcher-1" class="step-view active">
           <div class="step-header">
-            <span class="step-badge">Step 1 of 5</span>
+            <span class="step-badge">Step 1 of 6</span>
             <h2>Who is the Pitcher?</h2>
             <p>Enter the pitcher's full name or MLB Player ID.</p>
           </div>
@@ -192,7 +196,7 @@
         <!-- Pitcher Step 2: Pitcher Throwing Hand -->
         <div id="step-view-pitcher-2" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 2 of 5</span>
+            <span class="step-badge">Step 2 of 6</span>
             <h2>Pitcher Throwing Hand</h2>
             <p>Select throwing hand filter (L = Left, R = Right, or both).</p>
           </div>
@@ -216,7 +220,7 @@
         <!-- Pitcher Step 3: Batter Name (Optional) -->
         <div id="step-view-pitcher-3" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 3 of 5 (Optional)</span>
+            <span class="step-badge">Step 3 of 6 (Optional)</span>
             <h2>Specific Batter Matchup?</h2>
             <p>Enter a batter name for head-to-head Statcast data, or leave blank to analyze against all batters.</p>
           </div>
@@ -235,7 +239,7 @@
         <!-- Pitcher Step 4: Batter Stance Filter -->
         <div id="step-view-pitcher-4" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 4 of 5</span>
+            <span class="step-badge">Step 4 of 6</span>
             <h2>Batter Stance Filter</h2>
             <p>Filter by batter batting stance (left, right, or both).</p>
           </div>
@@ -256,10 +260,36 @@
           </div>
         </div>
 
-        <!-- Pitcher & Batter Step 5: Season Year -->
+        <!-- Pitcher Step 5: Count Filter (Optional) -->
         <div id="step-view-pitcher-5" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 5 of 5</span>
+            <span class="step-badge">Step 5 of 6 (Optional)</span>
+            <h2>Ball-Strike Count Filter</h2>
+            <p>Filter pitch data by count (e.g. 0-0, 2-1, 3-2), or leave blank for overall stats.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-count"
+              class="input-box"
+              type="text"
+              placeholder="e.g. 0-0, 2-1, 3-2 (or press Enter for all counts)"
+              autocomplete="off"
+            >
+            <div id="feedback-count" class="player-feedback"></div>
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn active" data-target="input-count" data-value="">All Counts</button>
+            <button type="button" class="chip-btn" data-target="input-count" data-value="0-0">0-0 (First Pitch)</button>
+            <button type="button" class="chip-btn" data-target="input-count" data-value="0-2">0-2 (Pitcher's Count)</button>
+            <button type="button" class="chip-btn" data-target="input-count" data-value="2-1">2-1 (Hitter's Count)</button>
+            <button type="button" class="chip-btn" data-target="input-count" data-value="3-2">3-2 (Full Count)</button>
+          </div>
+        </div>
+
+        <!-- Pitcher Step 6: Season Year -->
+        <div id="step-view-pitcher-6" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 6 of 6</span>
             <h2>Select MLB Season Year</h2>
             <p>Statcast data is available from 2008 to 2026.</p>
           </div>
@@ -286,7 +316,7 @@
         <!-- Batter Step 1: Batter Name -->
         <div id="step-view-batter-1" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 1 of 5</span>
+            <span class="step-badge">Step 1 of 6</span>
             <h2>Who is the Batter?</h2>
             <p>Enter the batter's full name or MLB Player ID.</p>
           </div>
@@ -305,7 +335,7 @@
         <!-- Batter Step 2: Batter Stance -->
         <div id="step-view-batter-2" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 2 of 5</span>
+            <span class="step-badge">Step 2 of 6</span>
             <h2>Batter Stance</h2>
             <p>Select batter batting side (left, right, or both).</p>
           </div>
@@ -329,7 +359,7 @@
         <!-- Batter Step 3: Pitcher Matchup (Optional) -->
         <div id="step-view-batter-3" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 3 of 5 (Optional)</span>
+            <span class="step-badge">Step 3 of 6 (Optional)</span>
             <h2>Specific Pitcher Faced?</h2>
             <p>Enter a pitcher name for head-to-head matchups, or leave blank to query across all pitchers.</p>
           </div>
@@ -348,7 +378,7 @@
         <!-- Batter Step 4: Pitcher Throwing Hand Filter -->
         <div id="step-view-batter-4" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 4 of 5</span>
+            <span class="step-badge">Step 4 of 6</span>
             <h2>Pitcher Throwing Hand Filter</h2>
             <p>Filter pitches faced by pitcher throwing hand (L, R, or both).</p>
           </div>
@@ -369,10 +399,36 @@
           </div>
         </div>
 
-        <!-- Batter Step 5: Season Year -->
+        <!-- Batter Step 5: Count Filter (Optional) -->
         <div id="step-view-batter-5" class="step-view">
           <div class="step-header">
-            <span class="step-badge">Step 5 of 5</span>
+            <span class="step-badge">Step 5 of 6 (Optional)</span>
+            <h2>Ball-Strike Count Filter</h2>
+            <p>Filter pitches faced by count (e.g. 0-0, 2-1, 3-2), or leave blank for all counts.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-count-bmode"
+              class="input-box"
+              type="text"
+              placeholder="e.g. 0-0, 2-1, 3-2 (or press Enter for all counts)"
+              autocomplete="off"
+            >
+            <div id="feedback-count-bmode" class="player-feedback"></div>
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn active" data-target="input-count-bmode" data-value="">All Counts</button>
+            <button type="button" class="chip-btn" data-target="input-count-bmode" data-value="0-0">0-0 (First Pitch)</button>
+            <button type="button" class="chip-btn" data-target="input-count-bmode" data-value="0-2">0-2 (Pitcher's Count)</button>
+            <button type="button" class="chip-btn" data-target="input-count-bmode" data-value="2-1">2-1 (Hitter's Count)</button>
+            <button type="button" class="chip-btn" data-target="input-count-bmode" data-value="3-2">3-2 (Full Count)</button>
+          </div>
+        </div>
+
+        <!-- Batter Step 6: Season Year -->
+        <div id="step-view-batter-6" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 6 of 6</span>
             <h2>Select MLB Season Year</h2>
             <p>Statcast data is available from 2008 to 2026.</p>
           </div>

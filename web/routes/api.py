@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 import zipfile
 from flask import Blueprint, current_app, jsonify, request, send_file
 
-from scraper.config import DEFAULT_SEASON, normalize_batter_stance, normalize_pitcher_hand
+from scraper.config import DEFAULT_SEASON, normalize_batter_stance, normalize_count, normalize_pitcher_hand
 from scraper.pipeline import ScraperPipeline
 from scraper.player_search import PlayerSearchService
 from scraper.utils import clear_output_directory
@@ -99,6 +99,12 @@ def run_scrape():
     except (ValueError, TypeError):
         season = DEFAULT_SEASON
 
+    raw_count = data.get("count")
+    try:
+        count = normalize_count(raw_count) if raw_count else None
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     if search_mode == "pitcher":
         pitcher = data.get("pitcher_name")
         if not pitcher:
@@ -118,6 +124,7 @@ def run_scrape():
                     batter=batter,
                     batter_stance=batter_stance,
                     season=season,
+                    count=count,
                 )
             except Exception as e:
                 logger.error(f"Scraper execution error: {e}", exc_info=True)
@@ -143,20 +150,23 @@ def run_scrape():
                 "role": "Batter",
                 "display_name": f"{matchup_res['player2']['name']} (Pitches Faced)",
             }
+            count_suffix = f" [Count: {count}]" if count else ""
             h2h_payload = {
                 **h2h_data,
                 "name": matchup_res["matchup"]["name"],
                 "role": "Head-to-Head",
-                "display_name": f"{matchup_res['matchup']['name']} ({season})",
+                "display_name": f"{matchup_res['matchup']['name']}{count_suffix} ({season})",
             }
 
-            query_name = f"{pitcher} vs {batter} ({season})"
+            count_label = f" [Count: {count}]" if count else ""
+            query_name = f"{pitcher} vs {batter}{count_label} ({season})"
             entry = {
                 "filename": h2h_file.name,
                 "query_name": query_name,
                 "display_name": query_name,
                 "search_mode": search_mode,
                 "season": season,
+                "count": count,
                 "timestamp": h2h_file.stat().st_mtime if h2h_file.exists() else 0,
                 "rows_count": h2h_data["total_rows"],
                 "is_matchup": True,
@@ -178,6 +188,7 @@ def run_scrape():
                 "display_name": query_name,
                 "search_mode": search_mode,
                 "season": season,
+                "count": count,
                 "columns": h2h_data["columns"],
                 "rows": h2h_data["rows"],
                 "total_rows": h2h_data["total_rows"],
@@ -194,12 +205,14 @@ def run_scrape():
                     batter=None,
                     batter_stance=batter_stance,
                     season=season,
+                    count=count,
                 )
             except Exception as e:
                 logger.error(f"Scraper execution error: {e}", exc_info=True)
                 return jsonify({"error": str(e)}), 500
 
-            query_name = f"{pitcher} ({season})"
+            count_label = f" [Count: {count}]" if count else ""
+            query_name = f"{pitcher}{count_label} ({season})"
 
     elif search_mode == "batter":
         batter = data.get("batter_name")
@@ -220,6 +233,7 @@ def run_scrape():
                     batter=batter,
                     batter_stance=batter_stance,
                     season=season,
+                    count=count,
                 )
             except Exception as e:
                 logger.error(f"Scraper execution error: {e}", exc_info=True)
@@ -245,20 +259,23 @@ def run_scrape():
                 "role": "Pitcher",
                 "display_name": f"{matchup_res['player2']['name']} (Pitcher Arsenal)",
             }
+            count_suffix = f" [Count: {count}]" if count else ""
             h2h_payload = {
                 **h2h_data,
                 "name": matchup_res["matchup"]["name"],
                 "role": "Head-to-Head",
-                "display_name": f"{matchup_res['matchup']['name']} ({season})",
+                "display_name": f"{matchup_res['matchup']['name']}{count_suffix} ({season})",
             }
 
-            query_name = f"{batter} vs {pitcher} ({season})"
+            count_label = f" [Count: {count}]" if count else ""
+            query_name = f"{batter} vs {pitcher}{count_label} ({season})"
             entry = {
                 "filename": h2h_file.name,
                 "query_name": query_name,
                 "display_name": query_name,
                 "search_mode": search_mode,
                 "season": season,
+                "count": count,
                 "timestamp": h2h_file.stat().st_mtime if h2h_file.exists() else 0,
                 "rows_count": h2h_data["total_rows"],
                 "is_matchup": True,
@@ -280,6 +297,7 @@ def run_scrape():
                 "display_name": query_name,
                 "search_mode": search_mode,
                 "season": season,
+                "count": count,
                 "columns": h2h_data["columns"],
                 "rows": h2h_data["rows"],
                 "total_rows": h2h_data["total_rows"],
@@ -296,12 +314,14 @@ def run_scrape():
                     pitcher=None,
                     pitcher_hand=pitcher_hand,
                     season=season,
+                    count=count,
                 )
             except Exception as e:
                 logger.error(f"Scraper execution error: {e}", exc_info=True)
                 return jsonify({"error": str(e)}), 500
 
-            query_name = f"{batter} ({season})"
+            count_label = f" [Count: {count}]" if count else ""
+            query_name = f"{batter}{count_label} ({season})"
 
     else:
         return jsonify({"error": f"Invalid search mode: {search_mode}"}), 400
@@ -315,6 +335,7 @@ def run_scrape():
         "display_name": query_name,
         "search_mode": search_mode,
         "season": season,
+        "count": count,
         "timestamp": exported_file.stat().st_mtime if exported_file.exists() else 0,
         "rows_count": csv_info["total_rows"],
         "is_matchup": False,
@@ -334,6 +355,7 @@ def run_scrape():
         "display_name": query_name,
         "search_mode": search_mode,
         "season": season,
+        "count": count,
         "columns": csv_info["columns"],
         "rows": csv_info["rows"],
         "total_rows": csv_info["total_rows"],

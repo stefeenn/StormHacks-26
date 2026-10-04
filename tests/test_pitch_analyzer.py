@@ -131,3 +131,23 @@ def test_analyzer_invalid_inputs(sample_statcast_df):
     with pytest.raises(ValueError, match="Invalid batter stance"):
         analyzer.analyze(sample_statcast_df, pitcher_hand="L", batter_stance="invalid")
 
+
+def test_analyzer_with_count_filtering():
+    data = [
+        {"pitch_name": "Sinker", "release_speed": 97.0, "p_throws": "L", "stand": "L", "balls": 2, "strikes": 1},
+        {"pitch_name": "Sinker", "release_speed": 98.0, "p_throws": "L", "stand": "L", "balls": 0, "strikes": 0},
+        {"pitch_name": "Changeup", "release_speed": 88.0, "p_throws": "L", "stand": "L", "balls": 2, "strikes": 1},
+        {"pitch_name": "4-Seam Fastball", "release_speed": 99.0, "p_throws": "L", "stand": "L", "balls": 3, "strikes": 2},
+    ]
+    df = pd.DataFrame(data)
+    analyzer = PitchAnalyzer()
+    res = analyzer.analyze(df, pitcher_hand="L", batter_stance="left", count="2-1")
+
+    # In 2-1 count: only Sinker (1) and Changeup (1), total 2 pitches (50% each)
+    assert len(res) == 2
+    assert set(res["Pitch Type"]) == {"Sinker", "Changeup"}
+    sinker_row = res[res["Pitch Type"] == "Sinker"].iloc[0]
+    assert sinker_row["Occurrence Percentage (%)"] == "50.0%"
+    assert sinker_row["Average Velocity (mph)"] == "97.0"
+
+

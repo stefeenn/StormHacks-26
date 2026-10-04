@@ -7,6 +7,7 @@ from scraper.config import (
     MIN_STATCAST_SEASON,
     MAX_STATCAST_SEASON,
     normalize_batter_stance,
+    normalize_count,
     normalize_pitcher_hand,
 )
 from scraper.player_search import PlayerInfo, PlayerSearchService
@@ -183,6 +184,35 @@ class ConsoleInputHandler:
 
             return normalized
 
+    def prompt_count(self) -> Optional[str]:
+        """Prompt user for ball-strike count filter (e.g. '0-0', '2-1', '3-2').
+        
+        Optional: user can press Enter to skip and query all counts (overall stats).
+        
+        Returns:
+            Normalized count string ('B-S') or None if skipped/unspecified.
+        """
+        while True:
+            prompt_text = "Enter Count filter (Balls-Strikes, e.g. 0-0, 2-1, 3-2) [default: all counts]: "
+            raw_input = self.input_fn(prompt_text).strip()
+
+            if not raw_input:
+                self.print_fn("ℹ️ No count specified; using overall stats.")
+                return None
+
+            try:
+                norm = normalize_count(raw_input)
+                if not norm:
+                    self.print_fn("ℹ️ No count specified; using overall stats.")
+                    return None
+                balls, strikes = norm.split("-")
+                self.print_fn(f"✅ Selected Count: {norm} ({balls} Balls, {strikes} Strikes)")
+                return norm
+            except ValueError as e:
+                self.print_fn(
+                    f"❌ Error: {e} Please enter a valid count like '2-1' or press Enter to skip."
+                )
+
     def prompt_season(self, default: Optional[int] = DEFAULT_SEASON) -> int:
         """Prompt user for MLB season / year with range and format validation.
         
@@ -249,7 +279,10 @@ class ConsoleInputHandler:
         has_batter = batter_info is not None
         batter_stance = self.prompt_batter_stance(has_batter=has_batter)
 
-        # 5. Season Year (Last option, after all rest of input selections)
+        # 5. Count Filter (Optional, before Season Year)
+        count = self.prompt_count()
+
+        # 6. Season Year (Last option, after count and rest of selections)
         season = self.prompt_season(default=DEFAULT_SEASON)
 
         self.print_fn("-" * 60)
@@ -259,6 +292,7 @@ class ConsoleInputHandler:
             self.print_fn(f"  • Batter:  {batter_info.full_name} (Stance: {batter_stance})")
         else:
             self.print_fn(f"  • Batter:  All batters (Stance: {batter_stance})")
+        self.print_fn(f"  • Count:   {count if count else 'All counts (Overall)'}")
         self.print_fn(f"  • Season:  {season}")
         self.print_fn("=" * 60 + "\n")
 
@@ -272,6 +306,7 @@ class ConsoleInputHandler:
             "batter_id": batter_info.player_id if batter_info else None,
             "batter_info": batter_info,
             "batter_stance": batter_stance,
+            "count": count,
             "season": season,
         }
 
@@ -294,7 +329,10 @@ class ConsoleInputHandler:
         has_pitcher = pitcher_info is not None
         pitcher_hand = self.prompt_pitcher_hand(has_pitcher=has_pitcher)
 
-        # 5. Season Year (Last option, after all rest of input selections)
+        # 5. Count Filter (Optional, before Season Year)
+        count = self.prompt_count()
+
+        # 6. Season Year (Last option, after count and rest of selections)
         season = self.prompt_season(default=DEFAULT_SEASON)
 
         self.print_fn("-" * 60)
@@ -304,6 +342,7 @@ class ConsoleInputHandler:
             self.print_fn(f"  • Pitcher: {pitcher_info.full_name} (Throws: {pitcher_hand})")
         else:
             self.print_fn(f"  • Pitcher: All pitchers (Throws: {pitcher_hand})")
+        self.print_fn(f"  • Count:   {count if count else 'All counts (Overall)'}")
         self.print_fn(f"  • Season:  {season}")
         self.print_fn("=" * 60 + "\n")
 
@@ -317,6 +356,7 @@ class ConsoleInputHandler:
             "pitcher_id": pitcher_info.player_id if pitcher_info else None,
             "pitcher_info": pitcher_info,
             "pitcher_hand": pitcher_hand,
+            "count": count,
             "season": season,
         }
 

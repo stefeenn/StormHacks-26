@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 import numpy as np
 import pandas as pd
 
-from scraper.config import normalize_batter_stance, normalize_pitcher_hand
+from scraper.config import normalize_batter_stance, normalize_count, normalize_pitcher_hand
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +51,18 @@ class PitchAnalyzer:
             return None
 
         clean_pitches = df.apply(get_pitch_label, axis=1)
-        clean_df = pd.DataFrame({
+        data_dict = {
             "resolved_pitch": clean_pitches,
             "release_speed": pd.to_numeric(df["release_speed"], errors="coerce"),
             "p_throws": df["p_throws"].astype(str).str.strip().str.upper(),
             "stand": df["stand"].astype(str).str.strip().str.upper(),
-        })
+        }
+        if "balls" in df.columns:
+            data_dict["balls"] = pd.to_numeric(df["balls"], errors="coerce")
+        if "strikes" in df.columns:
+            data_dict["strikes"] = pd.to_numeric(df["strikes"], errors="coerce")
+
+        clean_df = pd.DataFrame(data_dict)
         clean_df = clean_df.dropna(subset=["resolved_pitch"]).copy()
 
         return clean_df
@@ -66,6 +72,7 @@ class PitchAnalyzer:
         raw_data: Union[pd.DataFrame, str, bytes],
         pitcher_hand: str,
         batter_stance: str,
+        count: Optional[str] = None,
     ) -> pd.DataFrame:
         """Analyze pitch data and generate a formatted DataFrame.
         
@@ -73,6 +80,7 @@ class PitchAnalyzer:
             raw_data: Raw CSV string or DataFrame from Statcast.
             pitcher_hand: Pitcher throwing hand ('L', 'R', or 'both').
             batter_stance: Batter stance ('left', 'right', or 'both').
+            count: Optional ball-strike count filter ('0-0', '2-1', etc.).
             
         Returns:
             Formatted pd.DataFrame with pitch types as rows and the requested columns.
@@ -106,8 +114,15 @@ class PitchAnalyzer:
             target_stand = "L" if norm_stance == "left" else "R"
             work_df = work_df[work_df["stand"] == target_stand]
 
+        # Apply count filter if specified
+        if count:
+            norm_count = normalize_count(count)
+            if norm_count and "balls" in work_df.columns and "strikes" in work_df.columns:
+                b_target, s_target = [int(x) for x in norm_count.split("-")]
+                work_df = work_df[(work_df["balls"] == b_target) & (work_df["strikes"] == s_target)]
+
         if work_df.empty:
-            logger.warning("Pitch data is empty after applying hand/stance filters.")
+            logger.warning("Pitch data is empty after applying filters.")
             return pd.DataFrame(columns=target_headers)
 
         # Unique pitches ordered by overall frequency descending

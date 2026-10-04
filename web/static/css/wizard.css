@@ -118,10 +118,24 @@
 
 .step-node-title {
   margin-top: 6px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 500;
   color: var(--color-text-dim);
   transition: color var(--transition-fast);
+  text-align: center;
+  max-width: 80px;
+}
+
+@media (max-width: 640px) {
+  .step-node-title {
+    font-size: 0.65rem;
+    max-width: 52px;
+  }
+  .step-node-bubble {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
 }
 
 .step-node.active .step-node-title {
@@ -277,6 +291,18 @@
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.3);
   color: #fca5a5;
+}
+
+.input-box.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+  animation: inputShake 0.4s ease-in-out;
+}
+
+@keyframes inputShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
 }
 
 /* Navigation Action Buttons */

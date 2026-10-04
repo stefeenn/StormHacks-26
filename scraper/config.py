@@ -233,3 +233,75 @@ def normalize_batter_stance(stance_str: Optional[str]) -> Optional[str]:
     cleaned = stance_str.strip().lower()
     return BATTER_STANCE_ALIASES.get(cleaned)
 
+
+# Valid ball-strike counts in baseball (Balls 0-3, Strikes 0-2)
+VALID_COUNTS = {
+    "0-0", "0-1", "0-2",
+    "1-0", "1-1", "1-2",
+    "2-0", "2-1", "2-2",
+    "3-0", "3-1", "3-2",
+}
+
+COUNT_NAMED_ALIASES: Dict[str, str] = {
+    "full": "3-2",
+    "full count": "3-2",
+    "fullcount": "3-2",
+}
+
+
+def normalize_count(count_str: Optional[str]) -> Optional[str]:
+    """Normalize a ball-strike count string into standard format 'B-S' (e.g. '2-1').
+    
+    Args:
+        count_str: Count representation such as '2-1', '2 1', '21', '3-2', or 'full count'.
+                   Returns None if empty, None, 'all', 'any', or 'none'.
+                   
+    Returns:
+        Normalized string in format 'B-S' (e.g. '2-1') or None if unspecified.
+        
+    Raises:
+        ValueError: If input format is invalid or balls/strikes exceed legal range (0-3 balls, 0-2 strikes).
+    """
+    if not count_str:
+        return None
+
+    cleaned = str(count_str).strip().lower()
+    if not cleaned or cleaned in ["all", "any", "none", "overall", "null"]:
+        return None
+
+    if cleaned in COUNT_NAMED_ALIASES:
+        return COUNT_NAMED_ALIASES[cleaned]
+
+    # Handle standard representations like '2-1', '2 - 1', '2,1', '2 1', '2:1', '2/1'
+    import re
+    match = re.match(r"^([0-9])\s*[-–—,/:\s]?\s*([0-9])$", cleaned)
+    if match:
+        balls = int(match.group(1))
+        strikes = int(match.group(2))
+        if 0 <= balls <= 3 and 0 <= strikes <= 2:
+            return f"{balls}-{strikes}"
+        else:
+            raise ValueError(
+                f"Invalid count '{count_str}': balls must be 0-3 and strikes must be 0-2."
+            )
+
+    raise ValueError(
+        f"Invalid count format '{count_str}'. Expected format 'B-S' (e.g. '0-0', '2-1', '3-2')."
+    )
+
+
+def count_to_hfc(count_str: Optional[str]) -> Optional[str]:
+    """Convert a normalized count string 'B-S' into Baseball Savant Statcast hfC parameter.
+    
+    For example, '2-1' becomes '21|', '0-0' becomes '00|', '3-2' becomes '32|'.
+    Returns None if count is None or unspecified.
+    """
+    if not count_str:
+        return None
+    normalized = normalize_count(count_str)
+    if not normalized:
+        return None
+    parts = normalized.split("-")
+    return f"{parts[0]}{parts[1]}|"
+
+

@@ -254,8 +254,66 @@ def test_prompt_season_without_default_requires_input():
     assert any("Season year is required" in p for p in prints)
 
 
+def test_prompt_count_valid():
+    """Verify prompt_count normalizes valid count strings."""
+    inputs = ["2-1"]
+    prints = []
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+    count = handler.prompt_count()
+    assert count == "2-1"
+    assert any("Selected Count: 2-1" in p for p in prints)
+
+
+def test_prompt_count_empty_returns_none():
+    """Verify empty input returns None (all counts)."""
+    inputs = [""]
+    prints = []
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+    count = handler.prompt_count()
+    assert count is None
+    assert any("using overall stats" in p for p in prints)
+
+
+def test_prompt_count_reprompts_on_invalid():
+    """Verify invalid count input reprompts until valid or skipped."""
+    inputs = ["4-2", "invalid", "3-2"]
+    prints = []
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+    count = handler.prompt_count()
+    assert count == "3-2"
+    assert any("balls must be 0-3" in p for p in prints)
+    assert any("Invalid count format 'invalid'" in p for p in prints)
+    assert any("Selected Count: 3-2" in p for p in prints)
+
+
+def test_prompt_count_gibberish_forces_valid_input():
+    """Verify gibberish strings are repeatedly rejected until a valid count is given."""
+    inputs = ["gibberish", "xyz123", "random_words", "2-1"]
+    prints = []
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+    count = handler.prompt_count()
+    assert count == "2-1"
+    # Verify each gibberish attempt triggered an error message
+    assert any("Invalid count format 'gibberish'" in p for p in prints)
+    assert any("Invalid count format 'xyz123'" in p for p in prints)
+    assert any("Invalid count format 'random_words'" in p for p in prints)
+    assert any("Selected Count: 2-1" in p for p in prints)
+
+
 def test_collect_all_inputs_pitcher_flow():
-    """Simulate complete interactive flow selecting Pitcher Search with custom year."""
+    """Simulate complete interactive flow selecting Pitcher Search with custom count and year."""
     mock_search = MagicMock()
     p_player = PlayerInfo(669373, "Tarik Skubal", "P", True, "L", "R", True)
     b_player = PlayerInfo(621566, "Matt Olson", "1B", False, "R", "L", True)
@@ -269,6 +327,7 @@ def test_collect_all_inputs_pitcher_flow():
         "L",             # Pitcher hand
         "Matt Olson",    # Batter name
         "left",          # Batter stance
+        "2-1",           # Count selection
         "2024",          # Year selection (last option)
     ]
 
@@ -286,11 +345,12 @@ def test_collect_all_inputs_pitcher_flow():
     assert result["batter_name"] == "Matt Olson"
     assert result["batter_id"] == 621566
     assert result["batter_stance"] == "left"
+    assert result["count"] == "2-1"
     assert result["season"] == 2024
 
 
 def test_collect_all_inputs_batter_flow():
-    """Simulate complete interactive flow selecting Batter Search with custom year."""
+    """Simulate complete interactive flow selecting Batter Search with default count and custom year."""
     mock_search = MagicMock()
     p_player = PlayerInfo(669373, "Tarik Skubal", "P", True, "L", "R", True)
     b_player = PlayerInfo(621566, "Matt Olson", "1B", False, "R", "L", True)
@@ -304,6 +364,7 @@ def test_collect_all_inputs_batter_flow():
         "left",          # Batter stance
         "Tarik Skubal",  # Pitcher name
         "L",             # Pitcher hand
+        "",              # Count filter (default: all counts)
         "2023",          # Year selection (last option)
     ]
 
@@ -321,6 +382,7 @@ def test_collect_all_inputs_batter_flow():
     assert result["pitcher_name"] == "Tarik Skubal"
     assert result["pitcher_id"] == 669373
     assert result["pitcher_hand"] == "L"
+    assert result["count"] is None
     assert result["season"] == 2023
 
 
@@ -335,6 +397,7 @@ def test_collect_pitcher_search_inputs_year_reprompt_and_default():
         "L",             # Pitcher hand
         "",              # Batter name (skip)
         "",              # Batter stance (default both)
+        "",              # Count (default all)
         "bad_year",      # Year (invalid)
         "",              # Year (press enter to default 2026)
     ]
@@ -348,6 +411,7 @@ def test_collect_pitcher_search_inputs_year_reprompt_and_default():
 
     result = handler.collect_pitcher_search_inputs()
     assert result["pitcher_name"] == "Tarik Skubal"
+    assert result["count"] is None
     assert result["season"] == 2026
     assert any("Invalid year 'bad_year'" in p for p in prints)
     assert any("Season:  2026" in p for p in prints)

@@ -101,6 +101,7 @@ def test_scrape_batter_pitches_to_csv(tmp_path):
         batter_id=621566,
         player_type="batter",
         season=2026,
+        count=None,
     )
 
 
@@ -197,4 +198,35 @@ def test_scrape_head_to_head_batter_mode(tmp_path):
     assert p1_file.exists()
     assert p2_file.exists()
     assert h2h_file.exists()
+
+
+def test_scrape_pitcher_arsenal_with_count(tmp_path):
+    mock_client = MagicMock()
+    mock_client.fetch_statcast_pitches.return_value = MOCK_STATCAST_CSV
+
+    mock_search = MagicMock()
+    mock_search.find_pitcher.return_value = PlayerInfo(
+        669373, "Tarik Skubal", "P", True, "L", "R", True
+    )
+
+    pipeline = ScraperPipeline(
+        client=mock_client,
+        player_search=mock_search,
+    )
+
+    exported = pipeline.scrape_pitcher_arsenal_to_csv(
+        pitcher="Tarik Skubal",
+        pitcher_hand="L",
+        season=2024,
+        count="2-1",
+    )
+
+    assert "count_2_1" in exported.name
+    mock_client.fetch_statcast_pitches.assert_called_with(
+        pitcher_id=669373,
+        batter_id=None,
+        season=2024,
+        count="2-1",
+    )
+
 

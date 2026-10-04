@@ -7,7 +7,12 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from scraper.config import DEFAULT_SEASON, normalize_batter_stance, normalize_pitcher_hand
+from scraper.config import (
+    DEFAULT_SEASON,
+    normalize_batter_stance,
+    normalize_count,
+    normalize_pitcher_hand,
+)
 from scraper.console import ConsoleInputHandler
 from scraper.pipeline import ScraperPipeline
 from scraper.utils import clear_output_directory
@@ -64,6 +69,12 @@ def parse_args():
         help="Batter stance: 'left', 'right', or 'both'",
     )
 
+    parser.add_argument(
+        "--count",
+        type=str,
+        default=None,
+        help="Ball-strike count filter (e.g. '0-0', '2-1', '3-2'). Defaults to all counts.",
+    )
     # Legacy / Team scraper arguments
     parser.add_argument(
         "--team",
@@ -189,6 +200,7 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
         pitcher_hand = inputs["pitcher_hand"]
         batter = inputs.get("batter_name")
         batter_stance = inputs.get("batter_stance", "both")
+        count = inputs.get("count")
         season = inputs.get("season", DEFAULT_SEASON)
     else:
         is_interactive = args.interactive or (args.pitcher is None and args.team is None and args.batter is None)
@@ -201,6 +213,7 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
             pitcher_hand = inputs["pitcher_hand"]
             batter = inputs["batter_name"]
             batter_stance = inputs["batter_stance"]
+            count = inputs.get("count")
             season = inputs["season"]
         else:
             pitcher = args.pitcher
@@ -224,6 +237,14 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
             else:
                 batter_stance = normalize_batter_stance(args.batter_stance) or "both"
 
+            if args.count:
+                try:
+                    count = normalize_count(args.count)
+                except ValueError as e:
+                    print(f"❌ Error: {e}")
+                    sys.exit(1)
+            else:
+                count = None
             season = args.season or DEFAULT_SEASON
 
     output_path = args.output
@@ -236,6 +257,7 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
                 batter=batter,
                 batter_stance=batter_stance,
                 season=season,
+                count=count,
                 output_path=output_path,
             )
             labels = [
@@ -257,6 +279,7 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
                 batter=None,
                 batter_stance=batter_stance,
                 season=season,
+                count=count,
                 output_path=output_path,
             )
             print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")
@@ -273,6 +296,7 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
         batter_stance = inputs["batter_stance"]
         pitcher = inputs.get("pitcher_name")
         pitcher_hand = inputs.get("pitcher_hand", "both")
+        count = inputs.get("count")
         season = inputs.get("season", DEFAULT_SEASON)
     else:
         is_interactive = args.interactive or (args.batter is None and args.pitcher is None and args.team is None)
@@ -285,6 +309,7 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
             batter_stance = inputs["batter_stance"]
             pitcher = inputs["pitcher_name"]
             pitcher_hand = inputs["pitcher_hand"]
+            count = inputs.get("count")
             season = inputs["season"]
         else:
             batter = args.batter
@@ -308,6 +333,14 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
             else:
                 pitcher_hand = normalize_pitcher_hand(args.pitcher_hand) or "both"
 
+            if args.count:
+                try:
+                    count = normalize_count(args.count)
+                except ValueError as e:
+                    print(f"❌ Error: {e}")
+                    sys.exit(1)
+            else:
+                count = None
             season = args.season or DEFAULT_SEASON
 
     output_path = args.output
@@ -320,6 +353,7 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
                 batter=batter,
                 batter_stance=batter_stance,
                 season=season,
+                count=count,
                 output_path=output_path,
             )
             labels = [
@@ -341,6 +375,7 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
                 pitcher=None,
                 pitcher_hand=pitcher_hand,
                 season=season,
+                count=count,
                 output_path=output_path,
             )
             print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")

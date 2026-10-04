@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from scraper.client import BaseballSavantClient
-from scraper.config import DEFAULT_SEASON, resolve_team_id
+from scraper.config import DEFAULT_SEASON, normalize_count, resolve_team_id
 from scraper.extractors.registry import FieldSelector
 from scraper.exporters.csv_exporter import CsvExporter
 from scraper.models import ScrapedDataset
@@ -114,6 +114,7 @@ class ScraperPipeline:
         batter: Optional[Union[str, int]] = None,
         batter_stance: str = "both",
         season: int = DEFAULT_SEASON,
+        count: Optional[str] = None,
         output_path: Optional[Union[str, Path]] = None,
     ) -> Path:
         """Fetch pitcher Statcast data, compute velocities and occurrence percentages, and export to CSV.
@@ -124,11 +125,14 @@ class ScraperPipeline:
             batter: Optional batter name (e.g. 'Matt Olson') or MLB ID.
             batter_stance: Batter stance ('left', 'right', or 'both').
             season: MLB season year (defaults to 2026).
+            count: Optional ball-strike count filter ('0-0', '2-1', etc.).
             output_path: Optional destination CSV path.
             
         Returns:
             Path of the exported CSV file.
         """
+        norm_count = normalize_count(count) if count else None
+
         # Resolve Pitcher
         if isinstance(pitcher, int) or (isinstance(pitcher, str) and str(pitcher).isdigit()):
             pitcher_id = int(pitcher)
@@ -159,6 +163,7 @@ class ScraperPipeline:
         logger.info(
             f"Querying Statcast for {pitcher_name} (Throws: {pitcher_hand})"
             + (f" vs {batter_name} (Stance: {batter_stance})" if batter_name else f" (Stance: {batter_stance})")
+            + (f" count {norm_count}" if norm_count else "")
             + f" in season {season}..."
         )
 
@@ -166,21 +171,24 @@ class ScraperPipeline:
             pitcher_id=pitcher_id,
             batter_id=batter_id,
             season=season,
+            count=norm_count,
         )
 
         result_df = self.pitch_analyzer.analyze(
             raw_data=csv_text,
             pitcher_hand=pitcher_hand,
             batter_stance=batter_stance,
+            count=norm_count,
         )
 
         if not output_path:
             p_slug = pitcher_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
+            c_slug = f"_count_{norm_count.replace('-', '_')}" if norm_count else ""
             if batter_name:
                 b_slug = batter_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
-                dest = Path(f"output/{p_slug}_vs_{b_slug}_{season}.csv")
+                dest = Path(f"output/{p_slug}_vs_{b_slug}_{season}{c_slug}.csv")
             else:
-                dest = Path(f"output/{p_slug}_{season}_pitch_arsenal.csv")
+                dest = Path(f"output/{p_slug}_{season}{c_slug}_pitch_arsenal.csv")
         else:
             dest = Path(output_path)
 
@@ -196,6 +204,7 @@ class ScraperPipeline:
         pitcher: Optional[Union[str, int]] = None,
         pitcher_hand: str = "both",
         season: int = DEFAULT_SEASON,
+        count: Optional[str] = None,
         output_path: Optional[Union[str, Path]] = None,
     ) -> Path:
         """Fetch batter Statcast data, compute pitch velocities and occurrence percentages faced, and export to CSV.
@@ -206,11 +215,14 @@ class ScraperPipeline:
             pitcher: Optional pitcher name (e.g. 'Tarik Skubal') or MLB ID.
             pitcher_hand: Pitcher throwing hand ('L', 'R', or 'both').
             season: MLB season year (defaults to 2026).
+            count: Optional ball-strike count filter ('0-0', '2-1', etc.).
             output_path: Optional destination CSV path.
             
         Returns:
             Path of the exported CSV file.
         """
+        norm_count = normalize_count(count) if count else None
+
         # Resolve Batter
         if isinstance(batter, int) or (isinstance(batter, str) and str(batter).isdigit()):
             batter_id = int(batter)
@@ -241,6 +253,7 @@ class ScraperPipeline:
         logger.info(
             f"Querying Statcast for batter {batter_name} (Stance: {batter_stance})"
             + (f" vs pitcher {pitcher_name} (Throws: {pitcher_hand})" if pitcher_name else f" (Pitcher Hand: {pitcher_hand})")
+            + (f" count {norm_count}" if norm_count else "")
             + f" in season {season}..."
         )
 
@@ -249,21 +262,24 @@ class ScraperPipeline:
             batter_id=batter_id,
             player_type="batter",
             season=season,
+            count=norm_count,
         )
 
         result_df = self.pitch_analyzer.analyze(
             raw_data=csv_text,
             pitcher_hand=pitcher_hand,
             batter_stance=batter_stance,
+            count=norm_count,
         )
 
         if not output_path:
             b_slug = batter_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
+            c_slug = f"_count_{norm_count.replace('-', '_')}" if norm_count else ""
             if pitcher_name:
                 p_slug = pitcher_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
-                dest = Path(f"output/{b_slug}_vs_{p_slug}_{season}.csv")
+                dest = Path(f"output/{b_slug}_vs_{p_slug}_{season}{c_slug}.csv")
             else:
-                dest = Path(f"output/{b_slug}_{season}_pitches_faced.csv")
+                dest = Path(f"output/{b_slug}_{season}{c_slug}_pitches_faced.csv")
         else:
             dest = Path(output_path)
 
@@ -280,6 +296,7 @@ class ScraperPipeline:
         batter: Union[str, int],
         batter_stance: str,
         season: int = DEFAULT_SEASON,
+        count: Optional[str] = None,
         output_path: Optional[Union[str, Path]] = None,
     ) -> dict:
         """Fetch three sets of Statcast data for a head-to-head matchup:
@@ -294,6 +311,7 @@ class ScraperPipeline:
             batter: Batter name or MLB ID.
             batter_stance: Batter stance ('left', 'right', or 'both').
             season: MLB season year (defaults to DEFAULT_SEASON).
+            count: Optional ball-strike count filter ('0-0', '2-1', etc.).
             output_path: Optional custom output path for the head-to-head CSV.
             
         Returns:
@@ -315,6 +333,8 @@ class ScraperPipeline:
             b_info = self.player_search.find_batter(batter)
             batter_name = b_info.full_name if b_info else str(batter)
 
+        norm_count = normalize_count(count) if count else None
+
         if mode == "batter":
             # 1. First player mentioned: Batter (individual)
             p1_file = self.scrape_batter_pitches_to_csv(
@@ -323,6 +343,7 @@ class ScraperPipeline:
                 pitcher=None,
                 pitcher_hand="both",
                 season=season,
+                count=norm_count,
             )
             # 2. Second player mentioned: Pitcher (individual)
             p2_file = self.scrape_pitcher_arsenal_to_csv(
@@ -331,6 +352,7 @@ class ScraperPipeline:
                 batter=None,
                 batter_stance="both",
                 season=season,
+                count=norm_count,
             )
             # 3. Head-to-Head matchup
             h2h_file = self.scrape_batter_pitches_to_csv(
@@ -339,6 +361,7 @@ class ScraperPipeline:
                 pitcher=pitcher,
                 pitcher_hand=pitcher_hand,
                 season=season,
+                count=norm_count,
                 output_path=output_path,
             )
             return {
@@ -363,6 +386,7 @@ class ScraperPipeline:
                 },
                 "files_in_order": [p1_file, p2_file, h2h_file],
                 "season": season,
+                "count": norm_count,
             }
         else:
             # mode == "pitcher" (default)
@@ -373,6 +397,7 @@ class ScraperPipeline:
                 batter=None,
                 batter_stance="both",
                 season=season,
+                count=norm_count,
             )
             # 2. Second player mentioned: Batter (individual)
             p2_file = self.scrape_batter_pitches_to_csv(
@@ -381,6 +406,7 @@ class ScraperPipeline:
                 pitcher=None,
                 pitcher_hand="both",
                 season=season,
+                count=norm_count,
             )
             # 3. Head-to-Head matchup
             h2h_file = self.scrape_pitcher_arsenal_to_csv(
@@ -389,6 +415,7 @@ class ScraperPipeline:
                 batter=batter,
                 batter_stance=batter_stance,
                 season=season,
+                count=norm_count,
                 output_path=output_path,
             )
             return {
@@ -413,5 +440,6 @@ class ScraperPipeline:
                 },
                 "files_in_order": [p1_file, p2_file, h2h_file],
                 "season": season,
+                "count": norm_count,
             }
 

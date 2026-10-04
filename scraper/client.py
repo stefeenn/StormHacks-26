@@ -13,6 +13,8 @@ from scraper.config import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_SEASON,
     DEFAULT_TIMEOUT,
+    count_to_hfc,
+    normalize_count,
     resolve_team_id,
 )
 
@@ -108,6 +110,7 @@ class BaseballSavantClient:
         pitcher_throws: Optional[str] = None,
         stand: Optional[str] = None,
         player_type: str = "pitcher",
+        count: Optional[str] = None,
     ) -> str:
         """Fetch Statcast pitch-by-pitch CSV data from Baseball Savant.
         
@@ -118,6 +121,7 @@ class BaseballSavantClient:
             pitcher_throws: Optional pitcher hand ('L' or 'R').
             stand: Optional batter stance ('L' or 'R').
             player_type: Primary subject type ('pitcher' or 'batter').
+            count: Optional ball-strike count (e.g. '2-1', '3-2', '0-0').
             
         Returns:
             Raw CSV text response from Statcast search.
@@ -125,13 +129,16 @@ class BaseballSavantClient:
         if not pitcher_id and not batter_id:
             raise ValueError("At least one of pitcher_id or batter_id must be provided.")
 
+        norm_count = normalize_count(count) if count else None
+
         cache_file = None
         if self.cache_dir:
             p_str = f"pitcher_{pitcher_id}" if pitcher_id else "all_pitchers"
             b_str = f"batter_{batter_id}" if batter_id else "all_batters"
             p_hand = f"_pthrows_{pitcher_throws}" if pitcher_throws else ""
             b_stand = f"_stand_{stand}" if stand else ""
-            cache_file = self.cache_dir / f"statcast_{player_type}_{p_str}_{b_str}_s{season}{p_hand}{b_stand}.csv"
+            c_str = f"_count_{norm_count.replace('-', '_')}" if norm_count else ""
+            cache_file = self.cache_dir / f"statcast_{player_type}_{p_str}_{b_str}_s{season}{p_hand}{b_stand}{c_str}.csv"
             if cache_file.exists():
                 logger.info(f"Loading cached Statcast pitch data: {cache_file}")
                 return cache_file.read_text(encoding="utf-8")
@@ -151,11 +158,16 @@ class BaseballSavantClient:
             params["pitcher_throws"] = pitcher_throws.upper()
         if stand and stand.upper() in ["R", "L"]:
             params["stand"] = stand.upper()
+        if norm_count:
+            hfc = count_to_hfc(norm_count)
+            if hfc:
+                params["hfC"] = hfc
 
         logger.info(
             f"Fetching Statcast pitch data (player_type={player_type}) "
             + (f"pitcher {pitcher_id}" if pitcher_id else "all pitchers")
             + (f" vs batter {batter_id}" if batter_id else "")
+            + (f" count {norm_count}" if norm_count else "")
             + f" (season {season})..."
         )
         csv_text = self.fetch_url(url, params=params)
@@ -164,4 +176,5 @@ class BaseballSavantClient:
             cache_file.write_text(csv_text, encoding="utf-8")
 
         return csv_text
+
 

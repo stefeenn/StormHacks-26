@@ -17,7 +17,7 @@ export class WizardController {
 
     this.searchMode = "pitcher"; // 'pitcher' | 'batter'
     this.currentStep = 1;
-    this.totalSteps = 5;
+    this.totalSteps = 6;
 
     // Form state
     this.state = {
@@ -27,6 +27,7 @@ export class WizardController {
       batter_name: "",
       batter_id: null,
       batter_stance: "both",
+      count: "",
       season: 2026,
     };
 
@@ -50,6 +51,8 @@ export class WizardController {
     this.inputBatterName = document.getElementById("input-batter-name");
     this.feedbackBatter = document.getElementById("feedback-batter");
     this.inputBatterStance = document.getElementById("input-batter-stance");
+    this.inputCount = document.getElementById("input-count");
+    this.feedbackCount = document.getElementById("feedback-count");
     this.inputSeason = document.getElementById("input-season");
 
     // Batter Mode Elements
@@ -59,6 +62,8 @@ export class WizardController {
     this.inputPitcherNameB = document.getElementById("input-pitcher-name-bmode");
     this.feedbackPitcherB = document.getElementById("feedback-pitcher-bmode");
     this.inputPitcherHandB = document.getElementById("input-pitcher-hand-bmode");
+    this.inputCountB = document.getElementById("input-count-bmode");
+    this.feedbackCountB = document.getElementById("feedback-count-bmode");
     this.inputSeasonB = document.getElementById("input-season-bmode");
 
     // Buttons
@@ -93,11 +98,13 @@ export class WizardController {
       this.inputPitcherHand,
       this.inputBatterName,
       this.inputBatterStance,
+      this.inputCount,
       this.inputSeason,
       this.inputBatterNameB,
       this.inputBatterStanceB,
       this.inputPitcherNameB,
       this.inputPitcherHandB,
+      this.inputCountB,
       this.inputSeasonB,
     ];
 
@@ -112,6 +119,20 @@ export class WizardController {
       }
     });
 
+    // Clear error feedback on input
+    if (this.inputCount) {
+      this.inputCount.addEventListener("input", () => {
+        this._clearFeedback(this.feedbackCount);
+        this.inputCount.classList.remove("input-error");
+      });
+    }
+    if (this.inputCountB) {
+      this.inputCountB.addEventListener("input", () => {
+        this._clearFeedback(this.feedbackCountB);
+        this.inputCountB.classList.remove("input-error");
+      });
+    }
+
     // Quick Option Chips
     document.querySelectorAll(".chip-btn").forEach((chip) => {
       chip.addEventListener("click", (e) => {
@@ -120,6 +141,9 @@ export class WizardController {
         const input = document.getElementById(targetId);
         if (input) {
           input.value = val;
+          input.classList.remove("input-error");
+          if (targetId === "input-count") this._clearFeedback(this.feedbackCount);
+          if (targetId === "input-count-bmode") this._clearFeedback(this.feedbackCountB);
           // Highlight active chip in this group
           const parent = chip.closest(".options-chips");
           if (parent) {
@@ -175,19 +199,65 @@ export class WizardController {
   }
 
   skipCurrentStep() {
-    if (this.searchMode === "pitcher" && this.currentStep === 3) {
-      // Optional batter name
-      this.state.batter_name = "";
-      this.state.batter_id = null;
-      if (this.inputBatterName) this.inputBatterName.value = "";
+    if (this.currentStep === 3) {
+      if (this.searchMode === "pitcher") {
+        this.state.batter_name = "";
+        this.state.batter_id = null;
+        if (this.inputBatterName) this.inputBatterName.value = "";
+      } else {
+        this.state.pitcher_name = "";
+        this.state.pitcher_id = null;
+        if (this.inputPitcherNameB) this.inputPitcherNameB.value = "";
+      }
       this.goToStep(4);
-    } else if (this.searchMode === "batter" && this.currentStep === 3) {
-      // Optional pitcher name
-      this.state.pitcher_name = "";
-      this.state.pitcher_id = null;
-      if (this.inputPitcherName) this.inputPitcherName.value = "";
-      this.goToStep(4);
+    } else if (this.currentStep === 5) {
+      this.state.count = "";
+      if (this.inputCount) {
+        this.inputCount.value = "";
+        this.inputCount.classList.remove("input-error");
+      }
+      if (this.inputCountB) {
+        this.inputCountB.value = "";
+        this.inputCountB.classList.remove("input-error");
+      }
+      this._clearFeedback(this.feedbackCount);
+      this._clearFeedback(this.feedbackCountB);
+      this.goToStep(6);
     }
+  }
+
+  _validateAndNormalizeCount(rawCount) {
+    if (!rawCount) {
+      return { valid: true, count: "" };
+    }
+    const cleaned = rawCount.trim().toLowerCase();
+    if (!cleaned || ["all", "any", "none", "overall", "null"].includes(cleaned)) {
+      return { valid: true, count: "" };
+    }
+    const aliases = {
+      "full": "3-2",
+      "full count": "3-2",
+      "fullcount": "3-2",
+    };
+    if (aliases[cleaned]) {
+      return { valid: true, count: aliases[cleaned] };
+    }
+    const match = cleaned.match(/^([0-9])\s*[-–—,/:\s]?\s*([0-9])$/);
+    if (match) {
+      const balls = parseInt(match[1], 10);
+      const strikes = parseInt(match[2], 10);
+      if (balls >= 0 && balls <= 3 && strikes >= 0 && strikes <= 2) {
+        return { valid: true, count: `${balls}-${strikes}` };
+      }
+      return {
+        valid: false,
+        error: `Invalid count '${rawCount}': Balls must be 0–3 and Strikes must be 0–2 (e.g. 0-0, 2-1, 3-2).`,
+      };
+    }
+    return {
+      valid: false,
+      error: `Invalid count format '${rawCount}'. Please enter a valid count (e.g. 0-0, 2-1, 3-2) or leave blank for all counts.`,
+    };
   }
 
   async submitCurrentStep() {
@@ -316,7 +386,26 @@ export class WizardController {
       }
 
       case 5: {
-        // Step 5: Season Year & Execute!
+        // Step 5: Count Filter (Optional)
+        const rawCount = (this.inputCount ? this.inputCount.value : "").trim();
+        const check = this._validateAndNormalizeCount(rawCount);
+        if (!check.valid) {
+          this._showFeedback(this.feedbackCount, check.error, "error");
+          if (this.inputCount) {
+            this.inputCount.classList.add("input-error");
+            this.inputCount.focus();
+            setTimeout(() => this.inputCount.classList.remove("input-error"), 500);
+          }
+          return;
+        }
+        this._clearFeedback(this.feedbackCount);
+        this.state.count = check.count;
+        this.goToStep(6);
+        break;
+      }
+
+      case 6: {
+        // Step 6: Season Year & Execute!
         const rawYear = (this.inputSeason.value || "").trim();
         const year = parseInt(rawYear, 10) || 2026;
         if (year < 2008 || year > 2026) {
@@ -446,7 +535,26 @@ export class WizardController {
       }
 
       case 5: {
-        // Step 5: Season Year & Execute!
+        // Step 5: Count Filter (Optional)
+        const rawCount = (this.inputCountB ? this.inputCountB.value : "").trim();
+        const check = this._validateAndNormalizeCount(rawCount);
+        if (!check.valid) {
+          this._showFeedback(this.feedbackCountB, check.error, "error");
+          if (this.inputCountB) {
+            this.inputCountB.classList.add("input-error");
+            this.inputCountB.focus();
+            setTimeout(() => this.inputCountB.classList.remove("input-error"), 500);
+          }
+          return;
+        }
+        this._clearFeedback(this.feedbackCountB);
+        this.state.count = check.count;
+        this.goToStep(6);
+        break;
+      }
+
+      case 6: {
+        // Step 6: Season Year & Execute!
         const rawYear = (this.inputSeasonB.value || "").trim();
         const year = parseInt(rawYear, 10) || 2026;
         if (year < 2008 || year > 2026) {
@@ -470,6 +578,7 @@ export class WizardController {
       pitcher_hand: this.state.pitcher_hand,
       batter_name: this.state.batter_name,
       batter_stance: this.state.batter_stance,
+      count: this.state.count || null,
       season: this.state.season,
     };
 
@@ -511,11 +620,18 @@ export class WizardController {
     el.style.display = "flex";
   }
 
+  _clearFeedback(el) {
+    if (!el) return;
+    el.className = "player-feedback";
+    el.textContent = "";
+    el.style.display = "none";
+  }
+
   /**
    * Update the UI state, transitions between input boxes, buttons, and badges.
    */
   updateUI() {
-    // 1. Update step nodes (1 to 5)
+    // 1. Update step nodes (1 to 6)
     document.querySelectorAll(".step-node").forEach((node) => {
       const stepNum = parseInt(node.getAttribute("data-step"), 10);
       node.classList.remove("active", "completed");
@@ -556,9 +672,13 @@ export class WizardController {
       }
     }
 
-    // Step 3 in both modes is optional
+    // Step 3 (matchup) and Step 5 (count) are optional
     if (this.btnSkip) {
       if (this.currentStep === 3) {
+        this.btnSkip.textContent = "Skip (All Players) ➔";
+        this.btnSkip.style.display = "inline-block";
+      } else if (this.currentStep === 5) {
+        this.btnSkip.textContent = "Skip (All Counts) ➔";
         this.btnSkip.style.display = "inline-block";
       } else {
         this.btnSkip.style.display = "none";
