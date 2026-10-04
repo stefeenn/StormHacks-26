@@ -261,8 +261,13 @@ class ConsoleInputHandler:
             "season": 2026,
         }
 
-    def collect_all_inputs(self, search_mode: Optional[str] = None) -> Dict[str, Any]:
+    def collect_all_inputs(self, search_mode: Optional[str] = None, *args, **kwargs) -> Dict[str, Any]:
         """Run top-level search mode selection and route to pitcher or batter collection."""
+        if search_mode is None:
+            search_mode = kwargs.get("search_mode")
+            if search_mode is None and len(args) > 0:
+                search_mode = args[0]
+
         if search_mode is None:
             self.print_fn("\n" + "=" * 60)
             self.print_fn("⚾ Baseball Savant Statcast Search")
