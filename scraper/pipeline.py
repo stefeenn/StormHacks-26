@@ -188,3 +188,86 @@ class ScraperPipeline:
         result_df.to_csv(dest, index=False)
         logger.info(f"Successfully exported {len(result_df)} pitch types to {dest}")
         return dest
+
+    def scrape_batter_pitches_to_csv(
+        self,
+        batter: Union[str, int],
+        batter_stance: str,
+        pitcher: Optional[Union[str, int]] = None,
+        pitcher_hand: str = "both",
+        season: int = DEFAULT_SEASON,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> Path:
+        """Fetch batter Statcast data, compute pitch velocities and occurrence percentages faced, and export to CSV.
+        
+        Args:
+            batter: Batter name (e.g. 'Matt Olson') or MLB ID.
+            batter_stance: Batter stance ('left', 'right', or 'both').
+            pitcher: Optional pitcher name (e.g. 'Tarik Skubal') or MLB ID.
+            pitcher_hand: Pitcher throwing hand ('L', 'R', or 'both').
+            season: MLB season year (defaults to 2026).
+            output_path: Optional destination CSV path.
+            
+        Returns:
+            Path of the exported CSV file.
+        """
+        # Resolve Batter
+        if isinstance(batter, int) or (isinstance(batter, str) and str(batter).isdigit()):
+            batter_id = int(batter)
+            b_info = self.player_search.find_batter(batter_id)
+            batter_name = b_info.full_name if b_info else f"Batter_{batter_id}"
+        else:
+            b_info = self.player_search.find_batter(batter)
+            if not b_info:
+                raise ValueError(f"Could not find batter matching '{batter}'.")
+            batter_id = b_info.player_id
+            batter_name = b_info.full_name
+
+        # Resolve Pitcher (if provided)
+        pitcher_id = None
+        pitcher_name = None
+        if pitcher:
+            if isinstance(pitcher, int) or (isinstance(pitcher, str) and str(pitcher).isdigit()):
+                pitcher_id = int(pitcher)
+                p_info = self.player_search.find_pitcher(pitcher_id)
+                pitcher_name = p_info.full_name if p_info else f"Pitcher_{pitcher_id}"
+            else:
+                p_info = self.player_search.find_pitcher(pitcher)
+                if not p_info:
+                    raise ValueError(f"Could not find pitcher matching '{pitcher}'.")
+                pitcher_id = p_info.player_id
+                pitcher_name = p_info.full_name
+
+        logger.info(
+            f"Querying Statcast for batter {batter_name} (Stance: {batter_stance})"
+            + (f" vs pitcher {pitcher_name} (Throws: {pitcher_hand})" if pitcher_name else f" (Pitcher Hand: {pitcher_hand})")
+            + f" in season {season}..."
+        )
+
+        csv_text = self.client.fetch_statcast_pitches(
+            pitcher_id=pitcher_id,
+            batter_id=batter_id,
+            player_type="batter",
+            season=season,
+        )
+
+        result_df = self.pitch_analyzer.analyze(
+            raw_data=csv_text,
+            pitcher_hand=pitcher_hand,
+            batter_stance=batter_stance,
+        )
+
+        if not output_path:
+            b_slug = batter_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
+            if pitcher_name:
+                p_slug = pitcher_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
+                dest = Path(f"output/{b_slug}_vs_{p_slug}_{season}.csv")
+            else:
+                dest = Path(f"output/{b_slug}_{season}_pitches_faced.csv")
+        else:
+            dest = Path(output_path)
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        result_df.to_csv(dest, index=False)
+        logger.info(f"Successfully exported {len(result_df)} pitch types to {dest}")
+        return dest

@@ -59,3 +59,46 @@ def test_scrape_pitcher_arsenal_to_csv(tmp_path):
     assert sinker["Average Velocity (mph)"] == 97.0
     assert sinker["Occurrence Percentage (%)"] == "40.0%"
 
+
+def test_scrape_batter_pitches_to_csv(tmp_path):
+    mock_client = MagicMock()
+    mock_client.fetch_statcast_pitches.return_value = MOCK_STATCAST_CSV
+
+    mock_search = MagicMock()
+    mock_search.find_batter.return_value = PlayerInfo(
+        621566, "Matt Olson", "1B", False, "R", "L", True
+    )
+    mock_search.find_pitcher.return_value = PlayerInfo(
+        669373, "Tarik Skubal", "P", True, "L", "R", True
+    )
+
+    pipeline = ScraperPipeline(
+        client=mock_client,
+        player_search=mock_search,
+    )
+
+    out_file = tmp_path / "olson_vs_skubal.csv"
+
+    exported = pipeline.scrape_batter_pitches_to_csv(
+        batter="Matt Olson",
+        batter_stance="left",
+        pitcher="Tarik Skubal",
+        pitcher_hand="L",
+        season=2026,
+        output_path=out_file,
+    )
+
+    assert exported.exists()
+    df = pd.read_csv(exported)
+    assert list(df.columns) == [
+        "Pitch Type",
+        "Average Velocity (mph)",
+        "Occurrence Percentage (%)",
+    ]
+    assert len(df) == 4
+    mock_client.fetch_statcast_pitches.assert_called_with(
+        pitcher_id=669373,
+        batter_id=621566,
+        player_type="batter",
+        season=2026,
+    )

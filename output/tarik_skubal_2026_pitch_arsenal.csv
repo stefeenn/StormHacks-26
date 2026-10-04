@@ -1,6 +1,6 @@
-Pitch Type,Average Velocity - Pitcher Left (mph),Average Velocity - Pitcher Right (mph),Average Velocity - Batter Left (mph),Average Velocity - Batter Right (mph),Occurrence Percentage - Pitcher Left (%),Occurrence Percentage - Pitcher Right (%),Occurrence Percentage - Batter Left (%),Occurrence Percentage - Batter Right (%)
-4-Seam Fastball,96.8,N/A,97.5,96.7,37.8%,0.0%,24.6%,41.6%
-Changeup,87.6,N/A,88.5,87.4,25.4%,0.0%,19.0%,27.3%
-Sinker,96.7,N/A,96.7,96.7,17.8%,0.0%,40.6%,11.1%
-Slider,89.7,N/A,89.6,89.7,14.0%,0.0%,9.3%,15.3%
-Curveball,80.4,N/A,80.8,80.2,5.2%,0.0%,6.5%,4.8%
+Pitch Type,Average Velocity - Left (mph),Average Velocity - Right (mph),Occurrence Percentage - Left (%),Occurrence Percentage - Right (%)
+4-Seam Fastball,97.5,96.7,24.6%,41.6%
+Changeup,88.5,87.4,19.0%,27.3%
+Sinker,96.7,96.7,40.6%,11.1%
+Slider,89.6,89.7,9.3%,15.3%
+Curveball,80.8,80.2,6.5%,4.8%
