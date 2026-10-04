@@ -3,7 +3,7 @@
  * smooth step transitions, and triggering Statcast scraping.
  */
 
-import { api } from "./api.js";
+import { api } from "./api.js?v=2";
 
 export class WizardController {
   /**
@@ -481,12 +481,7 @@ export class WizardController {
       await this.recentController.loadRecent();
 
       // Automatically pop out the screen reading out the data from the CSV!
-      this.modalController.open({
-        filename: response.filename,
-        display_name: response.query_name,
-        columns: response.columns,
-        rows: response.rows,
-      });
+      this.modalController.open(response);
 
       // Reset to step 1 for subsequent searches
       this.goToStep(1);

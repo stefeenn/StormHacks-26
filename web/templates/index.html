@@ -6,11 +6,11 @@
   <title>Baseball Savant Statcast Explorer</title>
   
   <!-- Modular CSS Components -->
-  <link rel="stylesheet" href="/static/css/variables.css">
-  <link rel="stylesheet" href="/static/css/layout.css">
-  <link rel="stylesheet" href="/static/css/wizard.css">
-  <link rel="stylesheet" href="/static/css/dropdown.css">
-  <link rel="stylesheet" href="/static/css/modal.css">
+  <link rel="stylesheet" href="/static/css/variables.css?v=2">
+  <link rel="stylesheet" href="/static/css/layout.css?v=2">
+  <link rel="stylesheet" href="/static/css/wizard.css?v=2">
+  <link rel="stylesheet" href="/static/css/dropdown.css?v=2">
+  <link rel="stylesheet" href="/static/css/modal.css?v=2">
 </head>
 <body>
 
@@ -366,7 +366,8 @@
     </div>
 
     <div class="modal-body">
-      <div class="csv-table-wrapper">
+      <!-- Single View (for single player queries) -->
+      <div id="modal-single-view" class="csv-table-wrapper">
         <table class="csv-table">
           <thead id="modal-table-headers">
             <!-- Dynamic table headers -->
@@ -375,6 +376,72 @@
             <!-- Dynamic table rows -->
           </tbody>
         </table>
+      </div>
+
+      <!-- Matchup View (for head-to-head queries: Player 1 on Left, H2H in Center, Player 2 on Right) -->
+      <div id="modal-matchup-view" class="matchup-view-grid" style="display: none;">
+        <!-- Left Column: Player 1 Individual Stats (e.g. Chris Sale) -->
+        <div class="matchup-column" id="matchup-col-left">
+          <div class="matchup-col-header">
+            <div class="matchup-col-title-wrap">
+              <span id="matchup-badge-left" class="matchup-badge badge-p1">Pitcher</span>
+              <h3 id="matchup-title-left" class="matchup-col-title">Player 1 Stats</h3>
+            </div>
+            <div class="matchup-col-actions">
+              <span id="matchup-count-left" class="matchup-col-count">0 pitch types</span>
+              <button id="matchup-download-left" class="btn-col-download" type="button" title="Download this CSV">💾</button>
+            </div>
+          </div>
+          <div class="matchup-col-meta" id="matchup-meta-left">filename.csv</div>
+          <div class="csv-table-wrapper matchup-table-wrapper">
+            <table class="csv-table">
+              <thead id="matchup-headers-left"></thead>
+              <tbody id="matchup-body-left"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Center Column: Head-to-Head Matchup Stats -->
+        <div class="matchup-column matchup-col-center" id="matchup-col-center">
+          <div class="matchup-col-header">
+            <div class="matchup-col-title-wrap">
+              <span id="matchup-badge-center" class="matchup-badge badge-h2h">Head-to-Head</span>
+              <h3 id="matchup-title-center" class="matchup-col-title">Matchup CSV</h3>
+            </div>
+            <div class="matchup-col-actions">
+              <span id="matchup-count-center" class="matchup-col-count">0 pitch types</span>
+              <button id="matchup-download-center" class="btn-col-download" type="button" title="Download H2H CSV">💾</button>
+            </div>
+          </div>
+          <div class="matchup-col-meta" id="matchup-meta-center">filename.csv</div>
+          <div class="csv-table-wrapper matchup-table-wrapper">
+            <table class="csv-table">
+              <thead id="matchup-headers-center"></thead>
+              <tbody id="matchup-body-center"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right Column: Player 2 Individual Stats (e.g. Shohei Ohtani) -->
+        <div class="matchup-column" id="matchup-col-right">
+          <div class="matchup-col-header">
+            <div class="matchup-col-title-wrap">
+              <span id="matchup-badge-right" class="matchup-badge badge-p2">Batter</span>
+              <h3 id="matchup-title-right" class="matchup-col-title">Player 2 Stats</h3>
+            </div>
+            <div class="matchup-col-actions">
+              <span id="matchup-count-right" class="matchup-col-count">0 pitch types</span>
+              <button id="matchup-download-right" class="btn-col-download" type="button" title="Download this CSV">💾</button>
+            </div>
+          </div>
+          <div class="matchup-col-meta" id="matchup-meta-right">filename.csv</div>
+          <div class="csv-table-wrapper matchup-table-wrapper">
+            <table class="csv-table">
+              <thead id="matchup-headers-right"></thead>
+              <tbody id="matchup-body-right"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -389,6 +456,6 @@
   </dialog>
 
   <!-- Modular Scripts -->
-  <script type="module" src="/static/js/app.js"></script>
+  <script type="module" src="/static/js/app.js?v=2"></script>
 </body>
 </html>

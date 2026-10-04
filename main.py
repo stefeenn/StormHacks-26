@@ -227,20 +227,43 @@ def run_pitch_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = 
             season = args.season or DEFAULT_SEASON
 
     output_path = args.output
-    try:
-        exported_file = pipeline.scrape_pitcher_arsenal_to_csv(
-            pitcher=pitcher,
-            pitcher_hand=pitcher_hand,
-            batter=batter,
-            batter_stance=batter_stance,
-            season=season,
-            output_path=output_path,
-        )
-        print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")
-        display_csv_preview(exported_file)
-    except Exception as e:
-        logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
-        sys.exit(1)
+    if batter:
+        try:
+            matchup_res = pipeline.scrape_head_to_head_to_csv(
+                mode="pitcher",
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                batter=batter,
+                batter_stance=batter_stance,
+                season=season,
+                output_path=output_path,
+            )
+            labels = [
+                f"{matchup_res['player1']['name']} (Individual Pitch Arsenal)",
+                f"{matchup_res['player2']['name']} (Individual Pitches Faced)",
+                f"{matchup_res['matchup']['name']} (Head-to-Head)",
+            ]
+            for file_path, label in zip(matchup_res["files_in_order"], labels):
+                print(f"\n✅ Scrape succeeded ({label})! Saved to: {file_path}")
+                display_csv_preview(file_path)
+        except Exception as e:
+            logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
+            sys.exit(1)
+    else:
+        try:
+            exported_file = pipeline.scrape_pitcher_arsenal_to_csv(
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                batter=None,
+                batter_stance=batter_stance,
+                season=season,
+                output_path=output_path,
+            )
+            print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")
+            display_csv_preview(exported_file)
+        except Exception as e:
+            logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
+            sys.exit(1)
 
 
 def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] = None):
@@ -288,20 +311,44 @@ def run_batter_scraper(args, pipeline: ScraperPipeline, inputs: Optional[dict] =
             season = args.season or DEFAULT_SEASON
 
     output_path = args.output
-    try:
-        exported_file = pipeline.scrape_batter_pitches_to_csv(
-            batter=batter,
-            batter_stance=batter_stance,
-            pitcher=pitcher,
-            pitcher_hand=pitcher_hand,
-            season=season,
-            output_path=output_path,
-        )
-        print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")
-        display_csv_preview(exported_file)
-    except Exception as e:
-        logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
-        sys.exit(1)
+    if pitcher:
+        try:
+            matchup_res = pipeline.scrape_head_to_head_to_csv(
+                mode="batter",
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                batter=batter,
+                batter_stance=batter_stance,
+                season=season,
+                output_path=output_path,
+            )
+            labels = [
+                f"{matchup_res['player1']['name']} (Individual Pitches Faced)",
+                f"{matchup_res['player2']['name']} (Individual Pitch Arsenal)",
+                f"{matchup_res['matchup']['name']} (Head-to-Head)",
+            ]
+            for file_path, label in zip(matchup_res["files_in_order"], labels):
+                print(f"\n✅ Scrape succeeded ({label})! Saved to: {file_path}")
+                display_csv_preview(file_path)
+        except Exception as e:
+            logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
+            sys.exit(1)
+    else:
+        try:
+            exported_file = pipeline.scrape_batter_pitches_to_csv(
+                batter=batter,
+                batter_stance=batter_stance,
+                pitcher=None,
+                pitcher_hand=pitcher_hand,
+                season=season,
+                output_path=output_path,
+            )
+            print(f"\n✅ Scrape succeeded! Saved to: {exported_file}")
+            display_csv_preview(exported_file)
+        except Exception as e:
+            logger.error(f"Scraper execution failed: {e}", exc_info=args.verbose)
+            sys.exit(1)
+
 
 
 def run_team_scraper(args, pipeline: ScraperPipeline):
@@ -359,6 +406,11 @@ def main():
 
     if args.team is not None:
         run_team_scraper(args, pipeline)
+    elif args.pitcher and args.batter and not args.interactive:
+        if args.search_mode == "batter":
+            run_batter_scraper(args, pipeline)
+        else:
+            run_pitch_scraper(args, pipeline)
     elif args.search_mode == "batter" or (args.batter and not args.pitcher and not args.interactive):
         run_batter_scraper(args, pipeline)
     elif args.search_mode == "pitcher" or (args.pitcher and not args.batter and not args.interactive):

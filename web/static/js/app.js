@@ -2,10 +2,10 @@
  * Main application bootstrap and lifecycle coordinator.
  */
 
-import { api } from "./api.js";
-import { CSVModalController } from "./modal.js";
-import { RecentSearchesController } from "./recent.js";
-import { WizardController } from "./wizard.js";
+import { api } from "./api.js?v=2";
+import { CSVModalController } from "./modal.js?v=2";
+import { RecentSearchesController } from "./recent.js?v=2";
+import { WizardController } from "./wizard.js?v=2";
 
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Initialize CSV Pop-out Modal Controller

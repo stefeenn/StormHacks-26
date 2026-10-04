@@ -3,7 +3,7 @@
  * Manages the top-right dropdown, red square thumbnails, and hyperlink re-access to CSV data.
  */
 
-import { api } from "./api.js";
+import { api } from "./api.js?v=2";
 
 export class RecentSearchesController {
   /**

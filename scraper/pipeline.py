@@ -271,3 +271,147 @@ class ScraperPipeline:
         result_df.to_csv(dest, index=False)
         logger.info(f"Successfully exported {len(result_df)} pitch types to {dest}")
         return dest
+
+    def scrape_head_to_head_to_csv(
+        self,
+        mode: str,
+        pitcher: Union[str, int],
+        pitcher_hand: str,
+        batter: Union[str, int],
+        batter_stance: str,
+        season: int = DEFAULT_SEASON,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> dict:
+        """Fetch three sets of Statcast data for a head-to-head matchup:
+        1. First player mentioned's individual statistics
+        2. Second player mentioned's individual statistics
+        3. Head-to-head matchup statistics
+        
+        Args:
+            mode: Search mode indicating which player was entered first ('pitcher' or 'batter').
+            pitcher: Pitcher name or MLB ID.
+            pitcher_hand: Pitcher throwing hand ('L', 'R', or 'both').
+            batter: Batter name or MLB ID.
+            batter_stance: Batter stance ('left', 'right', or 'both').
+            season: MLB season year (defaults to DEFAULT_SEASON).
+            output_path: Optional custom output path for the head-to-head CSV.
+            
+        Returns:
+            Dictionary containing metadata, player dicts, matchup dict, and files_in_order list:
+            [player1_file, player2_file, h2h_file].
+        """
+        # Resolve names for labeling
+        if isinstance(pitcher, int) or (isinstance(pitcher, str) and str(pitcher).isdigit()):
+            p_info = self.player_search.find_pitcher(int(pitcher))
+            pitcher_name = p_info.full_name if p_info else f"Pitcher_{pitcher}"
+        else:
+            p_info = self.player_search.find_pitcher(pitcher)
+            pitcher_name = p_info.full_name if p_info else str(pitcher)
+
+        if isinstance(batter, int) or (isinstance(batter, str) and str(batter).isdigit()):
+            b_info = self.player_search.find_batter(int(batter))
+            batter_name = b_info.full_name if b_info else f"Batter_{batter}"
+        else:
+            b_info = self.player_search.find_batter(batter)
+            batter_name = b_info.full_name if b_info else str(batter)
+
+        if mode == "batter":
+            # 1. First player mentioned: Batter (individual)
+            p1_file = self.scrape_batter_pitches_to_csv(
+                batter=batter,
+                batter_stance=batter_stance,
+                pitcher=None,
+                pitcher_hand="both",
+                season=season,
+            )
+            # 2. Second player mentioned: Pitcher (individual)
+            p2_file = self.scrape_pitcher_arsenal_to_csv(
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                batter=None,
+                batter_stance="both",
+                season=season,
+            )
+            # 3. Head-to-Head matchup
+            h2h_file = self.scrape_batter_pitches_to_csv(
+                batter=batter,
+                batter_stance=batter_stance,
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                season=season,
+                output_path=output_path,
+            )
+            return {
+                "mode": "batter",
+                "player1": {
+                    "name": batter_name,
+                    "role": "Batter",
+                    "type": "batter",
+                    "file": p1_file,
+                },
+                "player2": {
+                    "name": pitcher_name,
+                    "role": "Pitcher",
+                    "type": "pitcher",
+                    "file": p2_file,
+                },
+                "matchup": {
+                    "name": f"{batter_name} vs {pitcher_name}",
+                    "role": "Head-to-Head",
+                    "type": "matchup",
+                    "file": h2h_file,
+                },
+                "files_in_order": [p1_file, p2_file, h2h_file],
+                "season": season,
+            }
+        else:
+            # mode == "pitcher" (default)
+            # 1. First player mentioned: Pitcher (individual)
+            p1_file = self.scrape_pitcher_arsenal_to_csv(
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                batter=None,
+                batter_stance="both",
+                season=season,
+            )
+            # 2. Second player mentioned: Batter (individual)
+            p2_file = self.scrape_batter_pitches_to_csv(
+                batter=batter,
+                batter_stance=batter_stance,
+                pitcher=None,
+                pitcher_hand="both",
+                season=season,
+            )
+            # 3. Head-to-Head matchup
+            h2h_file = self.scrape_pitcher_arsenal_to_csv(
+                pitcher=pitcher,
+                pitcher_hand=pitcher_hand,
+                batter=batter,
+                batter_stance=batter_stance,
+                season=season,
+                output_path=output_path,
+            )
+            return {
+                "mode": "pitcher",
+                "player1": {
+                    "name": pitcher_name,
+                    "role": "Pitcher",
+                    "type": "pitcher",
+                    "file": p1_file,
+                },
+                "player2": {
+                    "name": batter_name,
+                    "role": "Batter",
+                    "type": "batter",
+                    "file": p2_file,
+                },
+                "matchup": {
+                    "name": f"{pitcher_name} vs {batter_name}",
+                    "role": "Head-to-Head",
+                    "type": "matchup",
+                    "file": h2h_file,
+                },
+                "files_in_order": [p1_file, p2_file, h2h_file],
+                "season": season,
+            }
+
