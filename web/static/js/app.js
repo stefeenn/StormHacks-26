@@ -4,10 +4,14 @@
 
 import { api } from "./api.js?v=2";
 import { CSVModalController } from "./modal.js?v=2";
+import { IntroAnimationController } from "./intro.js?v=1";
 import { RecentSearchesController } from "./recent.js?v=2";
 import { WizardController } from "./wizard.js?v=2";
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 0. Initialize Fastball Pitch Intro Animation
+  const introController = new IntroAnimationController();
+
   // 1. Initialize CSV Pop-out Modal Controller
   const modalController = new CSVModalController();
 

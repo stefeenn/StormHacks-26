@@ -8,18 +8,98 @@
   <!-- Modular CSS Components -->
   <link rel="stylesheet" href="/static/css/variables.css?v=2">
   <link rel="stylesheet" href="/static/css/layout.css?v=2">
+  <link rel="stylesheet" href="/static/css/intro.css?v=1">
   <link rel="stylesheet" href="/static/css/wizard.css?v=2">
   <link rel="stylesheet" href="/static/css/dropdown.css?v=2">
   <link rel="stylesheet" href="/static/css/modal.css?v=2">
 </head>
-<body>
+<body class="intro-active">
+
+  <!-- 3D Baseball Intro Stage -->
+  <div id="intro-stage" aria-label="Introductory animation" role="region">
+    <div id="intro-shockwave"></div>
+    <div class="intro-ball-track">
+      <!-- Speed lines / aerodynamic wind trails -->
+      <svg class="intro-speed-lines" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g stroke="#93c5fd" stroke-linecap="round">
+          <line x1="60" y1="50" x2="120" y2="95" stroke-opacity="0.4" stroke-width="2.5" />
+          <line x1="260" y1="60" x2="200" y2="105" stroke-opacity="0.6" stroke-width="3" />
+          <line x1="40" y1="180" x2="110" y2="165" stroke-opacity="0.5" stroke-width="2" />
+          <line x1="280" y1="210" x2="210" y2="185" stroke-opacity="0.7" stroke-width="3.5" />
+          <line x1="160" y1="30" x2="160" y2="80" stroke-opacity="0.4" stroke-width="2" />
+          <line x1="160" y1="290" x2="160" y2="240" stroke-opacity="0.4" stroke-width="2" />
+        </g>
+      </svg>
+
+      <!-- Vector Baseball SVG with 3D Sphere Shading & Realistic Seams -->
+      <svg class="intro-baseball-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Baseball">
+        <defs>
+          <radialGradient id="leatherShading" cx="35%" cy="32%" r="68%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="50%" stop-color="#f8fafc"/>
+            <stop offset="78%" stop-color="#e2e8f0"/>
+            <stop offset="92%" stop-color="#94a3b8"/>
+            <stop offset="100%" stop-color="#475569"/>
+          </radialGradient>
+          <radialGradient id="leatherGlint" cx="30%" cy="26%" r="28%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.75"/>
+            <stop offset="60%" stop-color="#ffffff" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <!-- Base Leather Sphere -->
+        <circle cx="100" cy="100" r="95" fill="url(#leatherShading)" stroke="#334155" stroke-width="1.5" />
+
+        <!-- Rotating Seam and Stitch Group -->
+        <g class="intro-seams-group">
+          <!-- Left Seam Arc -->
+          <path d="M 46 14 C 86 44, 86 156, 46 186" fill="none" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" />
+          <!-- Left Seam Stitches (Angled Pairs) -->
+          <line x1="42" y1="22" x2="58" y2="28" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="50" y1="36" x2="67" y2="43" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="58" y1="52" x2="76" y2="60" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="64" y1="70" x2="82" y2="78" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="67" y1="89" x2="85" y2="95" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="67" y1="109" x2="85" y2="111" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="64" y1="128" x2="82" y2="136" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="58" y1="146" x2="76" y2="154" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="50" y1="162" x2="67" y2="170" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="42" y1="176" x2="58" y2="182" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+
+          <!-- Right Seam Arc -->
+          <path d="M 154 14 C 114 44, 114 156, 154 186" fill="none" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" />
+          <!-- Right Seam Stitches (Angled Pairs) -->
+          <line x1="158" y1="22" x2="142" y2="28" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="150" y1="36" x2="133" y2="43" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="142" y1="52" x2="124" y2="60" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="136" y1="70" x2="118" y2="78" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="133" y1="89" x2="115" y2="95" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="133" y1="109" x2="115" y2="111" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="136" y1="128" x2="118" y2="136" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="142" y1="146" x2="124" y2="154" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="150" y1="162" x2="133" y2="170" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+          <line x1="158" y1="176" x2="142" y2="182" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" />
+        </g>
+
+        <!-- Specular Highlight Overlay -->
+        <circle cx="100" cy="100" r="95" fill="url(#leatherGlint)" pointer-events="none" />
+      </svg>
+    </div>
+
+    <!-- Skip Intro Button -->
+    <button id="intro-skip-btn" class="intro-skip-btn" type="button" aria-label="Skip introductory animation">
+      <span>Skip Intro</span>
+      <kbd>Esc</kbd>
+    </button>
+  </div>
 
   <!-- Top Navigation Header -->
   <header class="app-header">
     <!-- Title: Top Center of Screen -->
     <div class="header-center-title">
       <h1>
-        <span>⚾</span> Baseball Savant Statcast Explorer
+        <span id="btn-replay-intro" class="btn-replay-intro" role="button" tabindex="0" title="Click to replay pitch intro">⚾</span> Baseball Savant Statcast Explorer
         <span class="badge">Live</span>
       </h1>
       <p class="header-subtitle">Interactive pitch arsenal & head-to-head matchup query interface</p>
