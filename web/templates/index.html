@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baseball Savant Statcast Explorer</title>
+  
+  <!-- Modular CSS Components -->
+  <link rel="stylesheet" href="/static/css/variables.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/wizard.css">
+  <link rel="stylesheet" href="/static/css/dropdown.css">
+  <link rel="stylesheet" href="/static/css/modal.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <!-- Title: Top Center of Screen -->
+    <div class="header-center-title">
+      <h1>
+        <span>⚾</span> Baseball Savant Statcast Explorer
+        <span class="badge">Live</span>
+      </h1>
+      <p class="header-subtitle">Interactive pitch arsenal & head-to-head matchup query interface</p>
+    </div>
+
+    <!-- Dropdown: Top Right Corner of Screen -->
+    <div class="header-top-right">
+      <div id="recent-dropdown-container" class="dropdown-container">
+        <button id="recent-dropdown-trigger" class="dropdown-trigger-btn" type="button" aria-haspopup="true" aria-expanded="false">
+          <span>🕒 Recent Searches</span>
+          <span id="recent-count-badge" class="dropdown-badge">0</span>
+          <span class="caret">▼</span>
+        </button>
+
+        <div class="dropdown-menu" role="menu">
+          <div class="dropdown-header">
+            <span class="dropdown-title">Recent Queries</span>
+            <button id="recent-clear-btn" class="btn-clear-recent" type="button" title="Clear all generated files and history">Clear All</button>
+          </div>
+          <ul id="recent-items-list" class="dropdown-list">
+            <!-- Dynamically populated with red square thumbnails and query hyperlinks -->
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-main">
+    <div class="wizard-card">
+      
+      <!-- Search Mode Tabs -->
+      <div class="mode-selector" role="tablist">
+        <button id="mode-tab-pitcher" class="mode-tab-btn active" type="button" role="tab" aria-selected="true">
+          <span>🎯 Pitcher Arsenal Search</span>
+        </button>
+        <button id="mode-tab-batter" class="mode-tab-btn" type="button" role="tab" aria-selected="false">
+          <span>🏏 Batter Pitches Faced Search</span>
+        </button>
+      </div>
+
+      <!-- Step Progress Node Indicator -->
+      <div class="step-indicator">
+        <div class="step-node active" data-step="1">
+          <div class="step-node-bubble">1</div>
+          <div class="step-node-title">Target Player</div>
+        </div>
+        <div class="step-node" data-step="2">
+          <div class="step-node-bubble">2</div>
+          <div class="step-node-title">Hand / Stance</div>
+        </div>
+        <div class="step-node" data-step="3">
+          <div class="step-node-bubble">3</div>
+          <div class="step-node-title">Matchup (Opt.)</div>
+        </div>
+        <div class="step-node" data-step="4">
+          <div class="step-node-bubble">4</div>
+          <div class="step-node-title">Hand / Stance</div>
+        </div>
+        <div class="step-node" data-step="5">
+          <div class="step-node-bubble">5</div>
+          <div class="step-node-title">Season</div>
+        </div>
+      </div>
+
+      <!-- Stepped Viewport for Text Box Changing Animation -->
+      <div class="step-viewport">
+
+        <!-- ================= PITCHER SEARCH STEPS ================= -->
+        <!-- Pitcher Step 1: Pitcher Name -->
+        <div id="step-view-pitcher-1" class="step-view active">
+          <div class="step-header">
+            <span class="step-badge">Step 1 of 5</span>
+            <h2>Who is the Pitcher?</h2>
+            <p>Enter the pitcher's full name or MLB Player ID.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-pitcher-name"
+              class="input-box"
+              type="text"
+              placeholder="e.g. Tarik Skubal, Chris Sale, Paul Skenes..."
+              autocomplete="off"
+              autofocus
+            >
+            <div id="feedback-pitcher" class="player-feedback"></div>
+          </div>
+        </div>
+
+        <!-- Pitcher Step 2: Pitcher Throwing Hand -->
+        <div id="step-view-pitcher-2" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 2 of 5</span>
+            <h2>Pitcher Throwing Hand</h2>
+            <p>Select throwing hand filter (L = Left, R = Right, or both).</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-pitcher-hand"
+              class="input-box"
+              type="text"
+              placeholder="Enter 'L', 'R', or 'both'"
+              value="both"
+              autocomplete="off"
+            >
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn" data-target="input-pitcher-hand" data-value="L">Left-Handed (L)</button>
+            <button type="button" class="chip-btn" data-target="input-pitcher-hand" data-value="R">Right-Handed (R)</button>
+            <button type="button" class="chip-btn active" data-target="input-pitcher-hand" data-value="both">Both / Any</button>
+          </div>
+        </div>
+
+        <!-- Pitcher Step 3: Batter Name (Optional) -->
+        <div id="step-view-pitcher-3" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 3 of 5 (Optional)</span>
+            <h2>Specific Batter Matchup?</h2>
+            <p>Enter a batter name for head-to-head Statcast data, or leave blank to analyze against all batters.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-batter-name"
+              class="input-box"
+              type="text"
+              placeholder="e.g. Shohei Ohtani, Aaron Judge (or press Enter to skip)"
+              autocomplete="off"
+            >
+            <div id="feedback-batter" class="player-feedback"></div>
+          </div>
+        </div>
+
+        <!-- Pitcher Step 4: Batter Stance Filter -->
+        <div id="step-view-pitcher-4" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 4 of 5</span>
+            <h2>Batter Stance Filter</h2>
+            <p>Filter by batter batting stance (left, right, or both).</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-batter-stance"
+              class="input-box"
+              type="text"
+              placeholder="Enter 'left', 'right', or 'both'"
+              value="both"
+              autocomplete="off"
+            >
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn" data-target="input-batter-stance" data-value="left">Left-Handed Batter</button>
+            <button type="button" class="chip-btn" data-target="input-batter-stance" data-value="right">Right-Handed Batter</button>
+            <button type="button" class="chip-btn active" data-target="input-batter-stance" data-value="both">Both / All Batters</button>
+          </div>
+        </div>
+
+        <!-- Pitcher & Batter Step 5: Season Year -->
+        <div id="step-view-pitcher-5" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 5 of 5</span>
+            <h2>Select MLB Season Year</h2>
+            <p>Statcast data is available from 2008 to 2026.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-season"
+              class="input-box"
+              type="number"
+              min="2008"
+              max="2026"
+              value="2026"
+              placeholder="2026"
+            >
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn active" data-target="input-season" data-value="2026">2026 Season</button>
+            <button type="button" class="chip-btn" data-target="input-season" data-value="2025">2025 Season</button>
+            <button type="button" class="chip-btn" data-target="input-season" data-value="2024">2024 Season</button>
+            <button type="button" class="chip-btn" data-target="input-season" data-value="2021">2021 Season</button>
+          </div>
+        </div>
+
+        <!-- ================= BATTER SEARCH STEPS ================= -->
+        <!-- Batter Step 1: Batter Name -->
+        <div id="step-view-batter-1" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 1 of 5</span>
+            <h2>Who is the Batter?</h2>
+            <p>Enter the batter's full name or MLB Player ID.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-batter-name-bmode"
+              class="input-box"
+              type="text"
+              placeholder="e.g. Aaron Judge, Juan Soto, Freddie Freeman..."
+              autocomplete="off"
+            >
+            <div id="feedback-batter-bmode" class="player-feedback"></div>
+          </div>
+        </div>
+
+        <!-- Batter Step 2: Batter Stance -->
+        <div id="step-view-batter-2" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 2 of 5</span>
+            <h2>Batter Stance</h2>
+            <p>Select batter batting side (left, right, or both).</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-batter-stance-bmode"
+              class="input-box"
+              type="text"
+              placeholder="Enter 'left', 'right', or 'both'"
+              value="both"
+              autocomplete="off"
+            >
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn" data-target="input-batter-stance-bmode" data-value="left">Left-Handed Stance</button>
+            <button type="button" class="chip-btn" data-target="input-batter-stance-bmode" data-value="right">Right-Handed Stance</button>
+            <button type="button" class="chip-btn active" data-target="input-batter-stance-bmode" data-value="both">Both / Any</button>
+          </div>
+        </div>
+
+        <!-- Batter Step 3: Pitcher Matchup (Optional) -->
+        <div id="step-view-batter-3" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 3 of 5 (Optional)</span>
+            <h2>Specific Pitcher Faced?</h2>
+            <p>Enter a pitcher name for head-to-head matchups, or leave blank to query across all pitchers.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-pitcher-name-bmode"
+              class="input-box"
+              type="text"
+              placeholder="e.g. Corbin Burnes, Gerrit Cole (or press Enter to skip)"
+              autocomplete="off"
+            >
+            <div id="feedback-pitcher-bmode" class="player-feedback"></div>
+          </div>
+        </div>
+
+        <!-- Batter Step 4: Pitcher Throwing Hand Filter -->
+        <div id="step-view-batter-4" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 4 of 5</span>
+            <h2>Pitcher Throwing Hand Filter</h2>
+            <p>Filter pitches faced by pitcher throwing hand (L, R, or both).</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-pitcher-hand-bmode"
+              class="input-box"
+              type="text"
+              placeholder="Enter 'L', 'R', or 'both'"
+              value="both"
+              autocomplete="off"
+            >
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn" data-target="input-pitcher-hand-bmode" data-value="L">Left-Handed Pitchers</button>
+            <button type="button" class="chip-btn" data-target="input-pitcher-hand-bmode" data-value="R">Right-Handed Pitchers</button>
+            <button type="button" class="chip-btn active" data-target="input-pitcher-hand-bmode" data-value="both">All Pitchers</button>
+          </div>
+        </div>
+
+        <!-- Batter Step 5: Season Year -->
+        <div id="step-view-batter-5" class="step-view">
+          <div class="step-header">
+            <span class="step-badge">Step 5 of 5</span>
+            <h2>Select MLB Season Year</h2>
+            <p>Statcast data is available from 2008 to 2026.</p>
+          </div>
+          <div class="input-box-wrapper">
+            <input
+              id="input-season-bmode"
+              class="input-box"
+              type="number"
+              min="2008"
+              max="2026"
+              value="2026"
+              placeholder="2026"
+            >
+          </div>
+          <div class="options-chips">
+            <button type="button" class="chip-btn active" data-target="input-season-bmode" data-value="2026">2026 Season</button>
+            <button type="button" class="chip-btn" data-target="input-season-bmode" data-value="2025">2025 Season</button>
+            <button type="button" class="chip-btn" data-target="input-season-bmode" data-value="2024">2024 Season</button>
+            <button type="button" class="chip-btn" data-target="input-season-bmode" data-value="2021">2021 Season</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Navigation Action Controls -->
+      <div class="step-actions">
+        <button id="btn-prev" class="btn btn-secondary" type="button" disabled>
+          ⬅ Back
+        </button>
+        <button id="btn-skip" class="btn-skip" type="button" style="display: none;">
+          Skip (All Players) ➔
+        </button>
+        <button id="btn-next" class="btn btn-primary" type="button">
+          Next ➔
+        </button>
+      </div>
+
+      <!-- Scraping Progress Spinner Overlay -->
+      <div id="loading-overlay" class="loading-overlay" aria-live="assertive">
+        <div class="spinner"></div>
+        <div id="loading-title" class="loading-title">Scraping Statcast Data...</div>
+        <div id="loading-desc" class="loading-desc">Fetching pitch events from Baseball Savant...</div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p>Baseball Savant Scraper • Local Interface • Outputs cleared on closure</p>
+  </footer>
+
+  <!-- Pop-out Screen: CSV Data Reader Modal -->
+  <dialog id="csv-modal" class="csv-modal" aria-labelledby="modal-query-title">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <h2 id="modal-query-title">📊 Query Results</h2>
+        <p id="modal-file-name">filename.csv</p>
+      </div>
+      <button id="modal-close-btn" class="modal-close-btn" type="button" aria-label="Close dialog">✕</button>
+    </div>
+
+    <div class="modal-toolbar">
+      <input
+        id="modal-filter-input"
+        class="modal-filter-input"
+        type="text"
+        placeholder="🔍 Filter pitch types or velocities..."
+      >
+      <span id="modal-row-count" class="modal-stats">0 pitch types</span>
+    </div>
+
+    <div class="modal-body">
+      <div class="csv-table-wrapper">
+        <table class="csv-table">
+          <thead id="modal-table-headers">
+            <!-- Dynamic table headers -->
+          </thead>
+          <tbody id="modal-table-body">
+            <!-- Dynamic table rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="modal-download-btn" class="btn btn-secondary" type="button">
+        💾 Download CSV
+      </button>
+      <button id="modal-footer-close-btn" class="btn btn-primary" type="button">
+        Close (Esc)
+      </button>
+    </div>
+  </dialog>
+
+  <!-- Modular Scripts -->
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

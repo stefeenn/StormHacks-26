@@ -1,0 +1,397 @@
+/* Stepped Wizard Component & Progressive Input Box Transitions */
+
+.wizard-card {
+  width: 100%;
+  background: var(--color-surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 36px 40px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-normal), border-color var(--transition-normal);
+}
+
+.wizard-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Mode Selection Tabs */
+.mode-selector {
+  display: flex;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 28px;
+  border: 1px solid var(--color-border);
+}
+
+.mode-tab-btn {
+  flex: 1;
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mode-tab-btn:hover {
+  color: var(--color-text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-tab-btn.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Step Progress Indicator */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.step-indicator::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-border);
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+.step-node {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--color-surface);
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.step-node-bubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  color: var(--color-text-dim);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-normal);
+}
+
+.step-node.active .step-node-bubble {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 0 12px var(--color-primary-glow);
+}
+
+.step-node.completed .step-node-bubble {
+  border-color: var(--color-success);
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--color-success);
+}
+
+.step-node-title {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+  transition: color var(--transition-fast);
+}
+
+.step-node.active .step-node-title {
+  color: var(--color-text-main);
+  font-weight: 600;
+}
+
+/* Stepped Viewport for Text Box Changing Animation */
+.step-viewport {
+  position: relative;
+  min-height: 220px;
+}
+
+.step-view {
+  display: none;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.step-view.active {
+  display: block;
+  opacity: 1;
+  transform: translateX(0);
+  animation: slideFadeIn var(--transition-smooth) forwards;
+}
+
+@keyframes slideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Step Header */
+.step-header {
+  margin-bottom: 20px;
+}
+
+.step-header .step-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.step-header h2 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.step-header p {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* Input Box Styling */
+.input-box-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.input-box {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 1.15rem;
+  font-family: inherit;
+  background: rgba(15, 23, 42, 0.7);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-main);
+  outline: none;
+  transition: all var(--transition-normal);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.input-box:focus {
+  border-color: var(--color-border-active);
+  box-shadow: 0 0 0 4px var(--color-primary-glow), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.input-box::placeholder {
+  color: var(--color-text-dim);
+  font-size: 1.05rem;
+}
+
+/* Quick Select Option Chips (for Hand / Stance / Season shortcuts) */
+.options-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.chip-btn {
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chip-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-text-main);
+  border-color: var(--color-text-dim);
+}
+
+.chip-btn.active {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: var(--color-primary);
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+/* Player Feedback Box */
+.player-feedback {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  display: none;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.player-feedback.success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.player-feedback.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+/* Navigation Action Buttons */
+.step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--color-text-main);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--color-primary-glow);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-skip {
+  background: transparent;
+  color: var(--color-text-dim);
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 8px 12px;
+}
+
+.btn-skip:hover {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+}
+
+/* Loading Overlay while scraping */
+.loading-overlay {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 15, 25, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+}
+
+.loading-overlay.active {
+  display: flex;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(59, 130, 246, 0.2);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 6px;
+}
+
+.loading-desc {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}

@@ -12,6 +12,7 @@ dependencies = [
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
     "pandas>=2.0.0",
+    "flask>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +22,9 @@ dev = [
 
 [project.scripts]
 savant-scraper = "main:main"
+
+[tool.setuptools.packages.find]
+include = ["scraper*", "web*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

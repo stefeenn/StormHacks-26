@@ -114,6 +114,22 @@ def parse_args():
         help="Clear all files from the output folder and exit",
     )
     parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Launch the interactive modular local web interface",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        help="Port to run the local web server on (default: 5000)",
+    )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Do not automatically open default web browser when launching web interface",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -332,6 +348,11 @@ def main():
             print("ℹ️ Output folder ('output/') is already empty.")
         else:
             print(f"🗑️ Successfully cleared {count} file(s) from 'output/'.")
+        return
+
+    if args.web:
+        from web.app import run_server
+        run_server(port=args.port, open_browser=not args.no_browser)
         return
 
     pipeline = ScraperPipeline()
