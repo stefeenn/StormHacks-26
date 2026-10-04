@@ -175,8 +175,87 @@ def test_prompt_batter_stance_defaults_to_both_when_no_batter():
     assert stance == "both"
 
 
+def test_prompt_season_valid_input():
+    """Verify entering a valid 4-digit season returns the integer."""
+    inputs = ["2024"]
+    prints = []
+
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    season = handler.prompt_season()
+    assert season == 2024
+    assert any("Selected Season: 2024" in p for p in prints)
+
+
+def test_prompt_season_reprompts_on_non_numeric():
+    """Verify non-numeric season inputs produce error and re-prompt."""
+    inputs = ["invalid", "twenty-twenty", "2023"]
+    prints = []
+
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    season = handler.prompt_season()
+    assert season == 2023
+    assert any("Invalid year 'invalid'" in p for p in prints)
+    assert any("Invalid year 'twenty-twenty'" in p for p in prints)
+    assert any("Selected Season: 2023" in p for p in prints)
+
+
+def test_prompt_season_reprompts_on_out_of_range():
+    """Verify seasons outside 2008-2026 produce error and re-prompt."""
+    inputs = ["1990", "2050", "2022"]
+    prints = []
+
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    season = handler.prompt_season()
+    assert season == 2022
+    assert any("Invalid season 1990" in p for p in prints)
+    assert any("Invalid season 2050" in p for p in prints)
+    assert any("Selected Season: 2022" in p for p in prints)
+
+
+def test_prompt_season_default_on_empty():
+    """Verify empty input returns default season when default is provided."""
+    inputs = [""]
+    prints = []
+
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    season = handler.prompt_season(default=2026)
+    assert season == 2026
+    assert any("Selected Season: 2026" in p for p in prints)
+
+
+def test_prompt_season_without_default_requires_input():
+    """Verify empty input re-prompts if default is None."""
+    inputs = ["", "2025"]
+    prints = []
+
+    handler = ConsoleInputHandler(
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    season = handler.prompt_season(default=None)
+    assert season == 2025
+    assert any("Season year is required" in p for p in prints)
+
+
 def test_collect_all_inputs_pitcher_flow():
-    """Simulate complete interactive flow selecting Pitcher Search."""
+    """Simulate complete interactive flow selecting Pitcher Search with custom year."""
     mock_search = MagicMock()
     p_player = PlayerInfo(669373, "Tarik Skubal", "P", True, "L", "R", True)
     b_player = PlayerInfo(621566, "Matt Olson", "1B", False, "R", "L", True)
@@ -190,6 +269,7 @@ def test_collect_all_inputs_pitcher_flow():
         "L",             # Pitcher hand
         "Matt Olson",    # Batter name
         "left",          # Batter stance
+        "2024",          # Year selection (last option)
     ]
 
     handler = ConsoleInputHandler(
@@ -206,11 +286,11 @@ def test_collect_all_inputs_pitcher_flow():
     assert result["batter_name"] == "Matt Olson"
     assert result["batter_id"] == 621566
     assert result["batter_stance"] == "left"
-    assert result["season"] == 2026
+    assert result["season"] == 2024
 
 
 def test_collect_all_inputs_batter_flow():
-    """Simulate complete interactive flow selecting Batter Search."""
+    """Simulate complete interactive flow selecting Batter Search with custom year."""
     mock_search = MagicMock()
     p_player = PlayerInfo(669373, "Tarik Skubal", "P", True, "L", "R", True)
     b_player = PlayerInfo(621566, "Matt Olson", "1B", False, "R", "L", True)
@@ -224,6 +304,7 @@ def test_collect_all_inputs_batter_flow():
         "left",          # Batter stance
         "Tarik Skubal",  # Pitcher name
         "L",             # Pitcher hand
+        "2023",          # Year selection (last option)
     ]
 
     handler = ConsoleInputHandler(
@@ -240,4 +321,34 @@ def test_collect_all_inputs_batter_flow():
     assert result["pitcher_name"] == "Tarik Skubal"
     assert result["pitcher_id"] == 669373
     assert result["pitcher_hand"] == "L"
+    assert result["season"] == 2023
+
+
+def test_collect_pitcher_search_inputs_year_reprompt_and_default():
+    """Verify collect_pitcher_search_inputs reprompts invalid year and accepts default on enter."""
+    mock_search = MagicMock()
+    p_player = PlayerInfo(669373, "Tarik Skubal", "P", True, "L", "R", True)
+    mock_search.find_pitcher.return_value = p_player
+
+    inputs = [
+        "Tarik Skubal",  # Pitcher name
+        "L",             # Pitcher hand
+        "",              # Batter name (skip)
+        "",              # Batter stance (default both)
+        "bad_year",      # Year (invalid)
+        "",              # Year (press enter to default 2026)
+    ]
+    prints = []
+
+    handler = ConsoleInputHandler(
+        search_service=mock_search,
+        input_fn=lambda prompt="": inputs.pop(0),
+        print_fn=lambda *args, **kwargs: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    result = handler.collect_pitcher_search_inputs()
+    assert result["pitcher_name"] == "Tarik Skubal"
     assert result["season"] == 2026
+    assert any("Invalid year 'bad_year'" in p for p in prints)
+    assert any("Season:  2026" in p for p in prints)
+

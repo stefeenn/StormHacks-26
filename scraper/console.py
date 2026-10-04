@@ -2,7 +2,13 @@
 
 import logging
 from typing import Any, Callable, Dict, Optional, Tuple
-from scraper.config import normalize_batter_stance, normalize_pitcher_hand
+from scraper.config import (
+    DEFAULT_SEASON,
+    MIN_STATCAST_SEASON,
+    MAX_STATCAST_SEASON,
+    normalize_batter_stance,
+    normalize_pitcher_hand,
+)
 from scraper.player_search import PlayerInfo, PlayerSearchService
 
 logger = logging.getLogger(__name__)
@@ -177,6 +183,53 @@ class ConsoleInputHandler:
 
             return normalized
 
+    def prompt_season(self, default: Optional[int] = DEFAULT_SEASON) -> int:
+        """Prompt user for MLB season / year with range and format validation.
+        
+        Args:
+            default: Default year if user inputs empty string (defaults to DEFAULT_SEASON).
+            
+        Returns:
+            Validated integer season year.
+        """
+        while True:
+            if default is not None:
+                prompt_text = f"Enter Season Year (e.g. 2024) [default: {default}]: "
+            else:
+                prompt_text = "Enter Season Year (e.g. 2024): "
+
+            raw_input = self.input_fn(prompt_text).strip()
+
+            if not raw_input:
+                if default is not None:
+                    self.print_fn(f"✅ Selected Season: {default}")
+                    return default
+                else:
+                    self.print_fn("❌ Error: Season year is required. Please enter a valid 4-digit year.")
+                    continue
+
+            try:
+                year = int(raw_input)
+            except ValueError:
+                self.print_fn(
+                    f"❌ Error: Invalid year '{raw_input}'. Please enter a valid 4-digit numeric year "
+                    f"(e.g., {MIN_STATCAST_SEASON}-{MAX_STATCAST_SEASON})."
+                )
+                continue
+
+            if year < MIN_STATCAST_SEASON or year > MAX_STATCAST_SEASON:
+                self.print_fn(
+                    f"❌ Error: Invalid season {year}. Statcast data is available from "
+                    f"{MIN_STATCAST_SEASON} to {MAX_STATCAST_SEASON}. Please re-enter."
+                )
+                continue
+
+            self.print_fn(f"✅ Selected Season: {year}")
+            return year
+
+    # Alias prompt_year to prompt_season
+    prompt_year = prompt_season
+
     def collect_pitcher_search_inputs(self) -> Dict[str, Any]:
         """Collect and validate inputs for Pitcher Search mode."""
         self.print_fn("\n" + "=" * 60)
@@ -196,6 +249,9 @@ class ConsoleInputHandler:
         has_batter = batter_info is not None
         batter_stance = self.prompt_batter_stance(has_batter=has_batter)
 
+        # 5. Season Year (Last option, after all rest of input selections)
+        season = self.prompt_season(default=DEFAULT_SEASON)
+
         self.print_fn("-" * 60)
         self.print_fn("📋 Pitcher Query Summary:")
         self.print_fn(f"  • Pitcher: {pitcher_info.full_name} (Throws: {pitcher_hand})")
@@ -203,7 +259,7 @@ class ConsoleInputHandler:
             self.print_fn(f"  • Batter:  {batter_info.full_name} (Stance: {batter_stance})")
         else:
             self.print_fn(f"  • Batter:  All batters (Stance: {batter_stance})")
-        self.print_fn(f"  • Season:  2026")
+        self.print_fn(f"  • Season:  {season}")
         self.print_fn("=" * 60 + "\n")
 
         return {
@@ -216,7 +272,7 @@ class ConsoleInputHandler:
             "batter_id": batter_info.player_id if batter_info else None,
             "batter_info": batter_info,
             "batter_stance": batter_stance,
-            "season": 2026,
+            "season": season,
         }
 
     def collect_batter_search_inputs(self) -> Dict[str, Any]:
@@ -238,6 +294,9 @@ class ConsoleInputHandler:
         has_pitcher = pitcher_info is not None
         pitcher_hand = self.prompt_pitcher_hand(has_pitcher=has_pitcher)
 
+        # 5. Season Year (Last option, after all rest of input selections)
+        season = self.prompt_season(default=DEFAULT_SEASON)
+
         self.print_fn("-" * 60)
         self.print_fn("📋 Batter Query Summary:")
         self.print_fn(f"  • Batter:  {batter_info.full_name} (Stance: {batter_stance})")
@@ -245,7 +304,7 @@ class ConsoleInputHandler:
             self.print_fn(f"  • Pitcher: {pitcher_info.full_name} (Throws: {pitcher_hand})")
         else:
             self.print_fn(f"  • Pitcher: All pitchers (Throws: {pitcher_hand})")
-        self.print_fn(f"  • Season:  2026")
+        self.print_fn(f"  • Season:  {season}")
         self.print_fn("=" * 60 + "\n")
 
         return {
@@ -258,7 +317,7 @@ class ConsoleInputHandler:
             "pitcher_id": pitcher_info.player_id if pitcher_info else None,
             "pitcher_info": pitcher_info,
             "pitcher_hand": pitcher_hand,
-            "season": 2026,
+            "season": season,
         }
 
     def collect_all_inputs(self, search_mode: Optional[str] = None) -> Dict[str, Any]:

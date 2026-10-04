@@ -113,6 +113,8 @@ DEFAULT_HEADERS = {
 DEFAULT_TIMEOUT = 20
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_SEASON = 2026
+MIN_STATCAST_SEASON = 2008
+MAX_STATCAST_SEASON = 2026
 
 # Common metric aliases mapping to table header labels
 METRIC_ALIASES: Dict[str, str] = {
