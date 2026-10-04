@@ -13,8 +13,10 @@
   max-height: 85vh;
   outline: none;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+}
+
+.csv-modal:not([open]) {
+  display: none !important;
 }
 
 .csv-modal::backdrop {
@@ -24,6 +26,8 @@
 }
 
 .csv-modal[open] {
+  display: flex;
+  flex-direction: column;
   animation: modalScaleIn var(--transition-normal) forwards;
 }
 

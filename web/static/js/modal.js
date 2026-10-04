@@ -18,31 +18,44 @@ export class CSVModalController {
     this.currentData = null;
     this.filteredRows = [];
 
+    // Ensure dialog starts strictly closed
+    this.close();
     this._bindEvents();
   }
 
   _bindEvents() {
     if (this.closeBtn) {
-      this.closeBtn.addEventListener("click", () => this.close());
+      this.closeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.close();
+      });
     }
     if (this.footerCloseBtn) {
-      this.footerCloseBtn.addEventListener("click", () => this.close());
+      this.footerCloseBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.close();
+      });
     }
     if (this.modalEl) {
-      // Close on backdrop click
+      // Native dialog backdrop click
       this.modalEl.addEventListener("click", (e) => {
-        const rect = this.modalEl.getBoundingClientRect();
-        const isInDialog = (
-          rect.top <= e.clientY &&
-          e.clientY <= rect.top + rect.height &&
-          rect.left <= e.clientX &&
-          e.clientX <= rect.left + rect.width
-        );
-        if (!isInDialog) {
+        if (e.target === this.modalEl) {
           this.close();
         }
       });
+      // Native cancel event (e.g. Esc key pressed)
+      this.modalEl.addEventListener("cancel", (e) => {
+        e.preventDefault();
+        this.close();
+      });
     }
+
+    // Global Esc shortcut
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.isOpen()) {
+        this.close();
+      }
+    });
 
     if (this.filterInputEl) {
       this.filterInputEl.addEventListener("input", () => this._onFilterChange());
@@ -84,9 +97,18 @@ export class CSVModalController {
     }
   }
 
+  isOpen() {
+    return Boolean(this.modalEl && (this.modalEl.open || this.modalEl.hasAttribute("open")));
+  }
+
   close() {
-    if (this.modalEl && this.modalEl.open) {
-      this.modalEl.close();
+    if (this.modalEl) {
+      if (typeof this.modalEl.close === "function" && this.modalEl.open) {
+        try {
+          this.modalEl.close();
+        } catch (_) {}
+      }
+      this.modalEl.removeAttribute("open");
     }
   }
 
